@@ -175,7 +175,8 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
         json_response(
             StatusCode::OK,
             Some(json!({
-                "message": "yes"
+                "message": "file deleted if exists",
+                "file_id": params.file_id.to_string()
             })),
         ),
     ))

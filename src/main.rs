@@ -34,6 +34,10 @@ use crate::context::{ImageFormat, ImageGet, ImageRemove};
 use crate::storage::{Backend, DatabaseBackend, StorageBackend};
 use crate::traits::DatabaseLinker;
 
+
+static UUID_REGEX: &str = "^[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}$";
+
+
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct PathExtractor {
     file_id: Uuid,
@@ -52,8 +56,9 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
     Ok(build_router(chain, pipelines, |route| {
         route
             .get(&format!(
-                "{}/:file_id:^[0-9a-fA-F]{{8}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{12}}$",
+                "{}/:file_id:{}",
                 base,
+                UUID_REGEX,
             ))
             .with_path_extractor::<PathExtractor>()
             .with_query_string_extractor::<ImageGet>()
@@ -62,8 +67,8 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
         route.post("admin/create").to_async(routes::add_file);
 
         route
-            .delete("admin/delete/:file_id")
-            .with_query_string_extractor::<ImageRemove>()
+            .delete(&format!("admin/delete/:file_id:{}",UUID_REGEX))
+            .with_path_extractor::<ImageRemove>()
             .to_async(routes::remove_file);
     }))
 }

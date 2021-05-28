@@ -35,7 +35,14 @@ def test_get_img2():
     assert r.status_code == 404
 
 
+def test_remove_img1():
+    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/394e7905-f501-4be8-902f-b8b7ea9d157a")
+    print(r.content)
+    assert r.status_code == 200
+
+
 if __name__ == '__main__':
     test_png_upload1()
     test_get_img1()
     test_get_img2()
+    test_remove_img1()
