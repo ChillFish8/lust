@@ -21,7 +21,7 @@ You can download a pre-made binary from the given github releases, binaries exis
 Building just requires the tradition `cargo build --release`.
 
 #### After Instalition
-See the [getting started page]() for more information after installation.
+See the [getting started page](https://github.com/ChillFish8/lust/blob/master/getting-started.md) for more information after installation.
  
 ## Formats
 Lust supports any of the following formats: 
