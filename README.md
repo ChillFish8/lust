@@ -66,7 +66,7 @@ For example lets upload an image:
 
 This image is about 91KB in size as a single image, If we upload this and convert to the 3 base image formats with some presets:
 
-```json
+```js
 {
   'data': {
     'file_id': 'ccbe2207-8629-4938-9da9-3f75706f9b4e',
