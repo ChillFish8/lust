@@ -38,18 +38,9 @@ The server can take several sizing presets which can be targetted via the `size`
 Regardless of presets an `original` image is always stored and can be accessed via the `size=original` query.
 The default preset when served without a `sized` parameter can be set in the configuration file via `default_serving_preset` key.
 
-## Compression
-Lust supports Gzip compression when uploading image content and automatically creates Gzipped data varients which are what get stored in the database,
-in the case of most modern webbrowsers, they will accept gzip as a method of compression. If this is the case the server will serve the pre-compressed data without any CPU overhead.
-
-This behavour can be toggled using the `serve_compression_mode` ket with a value being any of the following:
-
-| **Compression Mode** | **Description**                                                                                                                                                                             |
-|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `always `              | The server will always serve the compressed version of the image regardless  of headers or query paremeters.                                                                                |
-| `never`                | The server will never serve the compressed version of the image regardless of headers or query parameters.<br/> **WARNING**: This can create much higher CPU loads compared to other modes. |
-| `auto`              | The server will try to send the compressed version when it can either via the `compress` query parameter or via the `Accept-Encoding` header. (Recommended)                                 |
-
+## Webp Optimisation
+Lust supports webp automisation encoding, by default it encodes with lossless compression but this can be changed via the `webp_quality` key in the configuration file
+and should be a float from `0.0` to `100.0` with the quality of the image changing respectively.
 
 ## Base64 Support
 
