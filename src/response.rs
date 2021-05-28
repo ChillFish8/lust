@@ -2,7 +2,7 @@ use gotham::hyper::http::{header, Response, StatusCode};
 use gotham::hyper::Body;
 
 use headers::HeaderMapExt;
-use headers::{ContentEncoding, ContentType};
+use headers::ContentType;
 
 use bytes::BytesMut;
 use serde_json::Value;
@@ -26,7 +26,7 @@ pub fn json_response(status: StatusCode, data: Option<Value>) -> Response<Body> 
     resp
 }
 
-pub fn image_response(format: ImageFormat, data: BytesMut, gzipped: bool) -> Response<Body> {
+pub fn image_response(format: ImageFormat, data: BytesMut) -> Response<Body> {
     let mut resp = Response::builder()
         .status(StatusCode::OK)
         .body(Body::from(data.to_vec()))
@@ -41,10 +41,6 @@ pub fn image_response(format: ImageFormat, data: BytesMut, gzipped: bool) -> Res
 
     resp.headers_mut()
         .insert(header::CONTENT_TYPE, content_type.parse().unwrap());
-
-    if gzipped {
-        resp.headers_mut().typed_insert(ContentEncoding::gzip());
-    }
 
     resp
 }

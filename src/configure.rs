@@ -5,7 +5,7 @@ use gotham_derive::StateData;
 use hashbrown::HashMap;
 use serde::Deserialize;
 
-use crate::context::{CompressionMode, ImageFormat};
+use crate::context::ImageFormat;
 use crate::storage::DatabaseBackend;
 
 /// A cheaply cloneable version of the given configuration
@@ -32,7 +32,7 @@ pub struct Config {
     pub size_presets: HashMap<String, SizingPreset>,
     pub default_serving_preset: String,
     pub default_serving_format: ImageFormat,
-    pub serve_compression_mode: CompressionMode,
+    pub webp_quality: Option<f32>,
 }
 
 impl Config {
@@ -106,7 +106,7 @@ impl Config {
             },
             "default_serving_preset": "original",
             "default_serving_format": "webp",
-            "serve_compression_mode": CompressionMode::Auto,
+            "webp_ratio": None::<f32>,
         }))
     }
 }

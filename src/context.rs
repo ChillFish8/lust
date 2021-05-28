@@ -20,19 +20,11 @@ pub enum ImageFormat {
     WebP,
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum CompressionMode {
-    Always,
-    Never,
-    Auto,
-}
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 pub struct ImageGet {
     pub format: Option<ImageFormat>,
     pub encode: Option<bool>,
-    pub compress: Option<bool>,
     pub preset: Option<String>,
 }
 

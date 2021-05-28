@@ -1,58 +1,23 @@
 use base64::{decode, encode};
-use flate2::read::GzDecoder;
 use std::io::Read;
 
 use gotham::handler::HandlerResult;
-use gotham::hyper::http::{HeaderMap, StatusCode};
+use gotham::hyper::http::StatusCode;
 use gotham::hyper::{body, Body};
 use gotham::state::{FromState, State};
 
 use crate::configure::StateConfig;
-use crate::context::{CompressionMode, ImageGet, ImageRemove, ImageUpload, ImageUploaded};
+use crate::context::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::image::{delete_image, get_image, process_new_image};
 use crate::response::{empty_response, image_response, json_response};
 use crate::PathExtractor;
+use flate2::read::GzDecoder;
 
-const COMMA: u8 = 44;
-static GZIP: &[u8] = b"gzip";
-
-macro_rules! byte_or_return {
-    ( $v:expr, $cmp:expr ) => {{
-        if let Some(item) = $v {
-            if item != $cmp {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }};
-}
-
-fn maybe_gzip(headers: &HeaderMap) -> bool {
-    if let Some(v) = headers.get("Accept-Encoding") {
-        let buff = v.as_bytes();
-        let mut options = buff.split(|v| v == &COMMA); // analyser ignore
-        while let Some(v) = options.next() {
-            let mut v = v.into_iter();
-            while let Some(x) = v.next() {
-                if x != &GZIP[0] {
-                    continue;
-                };
-                byte_or_return!(v.next(), &GZIP[1]);
-                byte_or_return!(v.next(), &GZIP[2]);
-                byte_or_return!(v.next(), &GZIP[3]);
-                return true;
-            }
-        }
-    }
-    false
-}
 
 pub async fn get_file(mut state: State) -> HandlerResult {
     let path_vars = PathExtractor::take_from(&mut state);
     let params = ImageGet::take_from(&mut state);
     let config = StateConfig::take_from(&mut state);
-    let headers = HeaderMap::take_from(&mut state);
 
     let file_id = path_vars.file_id;
     let format = params
@@ -72,20 +37,7 @@ pub async fn get_file(mut state: State) -> HandlerResult {
         }
     }
 
-    let compression_mode = config.0.serve_compression_mode.clone();
-    let compress = match compression_mode {
-        CompressionMode::Always => true,
-        CompressionMode::Never => false,
-        CompressionMode::Auto => {
-            if let Some(compress) = params.compress {
-                compress
-            } else {
-                maybe_gzip(&headers)
-            }
-        }
-    };
-
-    let img = get_image(&mut state, file_id, preset, format, compress).await;
+    let img = get_image(&mut state, file_id, preset, format).await;
 
     match img {
         None => Ok((state, empty_response(StatusCode::NOT_FOUND))),
@@ -97,13 +49,12 @@ pub async fn get_file(mut state: State) -> HandlerResult {
                     json_response(
                         StatusCode::OK,
                         Some(json!({
-                                "compressed": compress,
                                 "image": encoded,
                         })),
                     ),
                 ));
             }
-            Ok((state, image_response(format, data, compress)))
+            Ok((state, image_response(format, data,)))
         }
     }
 }
