@@ -1,1 +1,7 @@
 /target
+/venv/
+/config.json
+/Cargo.lock
+/database.db
+/database.db-shm
+/database.db-wal
