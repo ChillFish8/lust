@@ -96,4 +96,4 @@ This image is about 91KB in size as a single image, If we upload this and conver
 }
 ```
 
-We can see with the `original` size totals around 200KB which is is fairly reasonable with 0 compression PNG encoding and lossless webp formats.
+We can see with the `original` size totals around 200KB which is is fairly reasonable with zero compression PNG encoding and lossless webp formats.
