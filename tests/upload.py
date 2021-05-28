@@ -26,8 +26,8 @@ def test_png_upload1():
 
 
 def test_get_img1():
-    r = requests.get(f"http://127.0.0.1:7070/images?file_id={uuid.uuid4()}")
-    assert r.status_code == 404
+    r = requests.get(f"http://127.0.0.1:7070/images/394e7905-f501-4be8-902f-b8b7ea9d157a")
+    assert r.status_code == 200
 
 
 def test_get_img2():

@@ -9,7 +9,7 @@ mod traits;
 #[macro_use]
 extern crate serde_json;
 
-use gotham::middleware::logger::RequestLogger;
+use gotham::middleware::logger::SimpleLogger as GothSimpleLogger;
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
@@ -41,7 +41,7 @@ struct PathExtractor {
 fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Router> {
     let base = config.0.base_data_path.clone();
     let pipeline = new_pipeline()
-        .add(RequestLogger::new(log::Level::Info))
+        .add(GothSimpleLogger::new(log::Level::Info))
         .add(StateMiddleware::new(backend))
         .add(StateMiddleware::new(config))
         .build();
@@ -50,7 +50,7 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
     Ok(build_router(chain, pipelines, |route| {
         route
             .get(&format!(
-                "{}/:file_id", // :^[0-9a-fA-F]{{8}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{12}}$
+                "{}/:file_id:^[0-9a-fA-F]{{8}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{4}}\\b-[0-9a-fA-F]{{12}}$",
                 base,
             ))
             .with_path_extractor::<PathExtractor>()
