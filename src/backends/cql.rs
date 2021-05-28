@@ -1,9 +1,10 @@
-#![allow(unused)]
-
-use cdrs::authenticators::{Authenticator, NoneAuthenticator, StaticPasswordAuthenticator};
+use cdrs::authenticators::StaticPasswordAuthenticator;
 use cdrs::cluster::session::{new as new_session, Session};
 use cdrs::cluster::{ClusterTcpConfig, NodeTcpConfigBuilder, TcpConnectionPool};
 use cdrs::load_balancing::RoundRobin;
+use cdrs::types::IntoRustByName;
+use cdrs::types::blob::Blob;
+use cdrs::types::value::Value;
 use cdrs::query::*;
 
 use anyhow::Result;
@@ -12,6 +13,7 @@ use bytes::BytesMut;
 use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
+use log::warn;
 
 use crate::context::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
@@ -39,9 +41,20 @@ pub struct DatabaseConfig {
     password: String,
 }
 
+macro_rules! log_and_convert_error {
+    ( $e:expr ) => {{
+        match $e {
+            Ok(frame) => Some(frame),
+            Err(e) => {
+                warn!("failed to execute query {:?}", e);
+                None
+            },
+        }
+    }};
+}
+
 /// A cassandra database backend.
 pub struct Backend {
-    cfg: DatabaseConfig,
     session: CurrentSession,
 }
 
@@ -71,7 +84,7 @@ impl Backend {
 
         let _ = session.query(create_ks).await?;
 
-        Ok(Self { cfg, session })
+        Ok(Self { session })
     }
 }
 
@@ -107,14 +120,77 @@ impl ImageStore for Backend {
         preset: String,
         format: ImageFormat,
     ) -> Option<BytesMut> {
-        unimplemented!()
+        let column = to_variant_name(&format).expect("unreachable");
+        let qry = format!(
+            "SELECT {column} FROM {table} WHERE file_id = ? LIMIT 1;",
+            column = column,
+            table = preset,
+        );
+
+        let values = query_values!(file_id);
+        let res = self.session
+            .query_with_values(qry, values).await;
+
+        let res = log_and_convert_error!(res)?;
+        let res = log_and_convert_error!(res.get_body())?;
+        let rows = res.into_rows()?;
+        let first = &rows[0];
+        let value: Option<Blob> = log_and_convert_error!(first.get_by_name(column))?;
+        let value: Vec<u8> = value?.into_vec();
+        let ref_: &[u8] = value.as_ref();
+        Some(BytesMut::from(ref_))
     }
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        unimplemented!()
+        for (preset, preset_data) in data {
+            let columns = preset_data
+                .keys()
+                .map(|v| to_variant_name(v).expect("unreachable"))
+                .collect::<Vec<&str>>()
+                .join(", ");
+
+            let placeholders = (1..preset_data.len() + 1)
+                .map(|_| "?")
+                .collect::<Vec<&str>>()
+                .join(", ");
+
+            let mut values: Vec<Value> = preset_data
+                .values()
+                .map(|d| Value::new_normal(d.to_vec()))
+                .collect();
+
+            values.insert(
+                0,
+                Value::new_normal(file_id.as_bytes().to_vec())
+            );
+
+            let qry = format!(
+                "INSERT INTO {table} (file_id, {columns}) VALUES (?, {placeholders})",
+                table = preset,
+                columns = columns,
+                placeholders = placeholders,
+            );
+
+            let values = QueryValues::SimpleValues(values);
+            let _ = self.session
+                .query_with_values(qry, values).await?;
+        }
+
+        Ok(())
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-        unimplemented!()
+        for preset in presets {
+            let qry = format!(
+                "DELETE FROM {table} WHERE file_id = ?;",
+                table = preset,
+            );
+
+            let values = query_values!(file_id);
+            let _ = self.session
+                .query_with_values(qry, values).await?;
+        }
+
+        Ok(())
     }
 }
