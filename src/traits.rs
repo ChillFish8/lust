@@ -21,5 +21,5 @@ pub trait ImageStore {
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()>;
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()>;
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()>;
 }

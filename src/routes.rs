@@ -95,8 +95,10 @@ pub async fn get_file(mut state: State) -> HandlerResult {
                 return Ok((state, json_response(
                     StatusCode::OK,
                     Some(json!({
-                        "data": encoded
-                })))))
+                            "compressed": compress,
+                            "image": encoded,
+                    }))
+                )))
             }
             Ok((state, image_response(format, data, compress)))
         },

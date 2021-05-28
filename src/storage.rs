@@ -76,12 +76,12 @@ impl ImageStore for Backend {
         }
     }
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()> {
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         match self {
-            Self::Cassandra => acquire!(CASSANDRA).remove_image(file_id).await,
-            Self::Postgres => acquire!(POSTGRES).remove_image(file_id).await,
-            Self::MySQL => acquire!(MYSQL).remove_image(file_id).await,
-            Self::Sqlite => acquire!(SQLITE).remove_image(file_id).await,
+            Self::Cassandra => acquire!(CASSANDRA).remove_image(file_id, presets).await,
+            Self::Postgres => acquire!(POSTGRES).remove_image(file_id, presets).await,
+            Self::MySQL => acquire!(MYSQL).remove_image(file_id, presets).await,
+            Self::Sqlite => acquire!(SQLITE).remove_image(file_id, presets).await,
         }
     }
 }
@@ -117,7 +117,7 @@ impl ImageStore for StorageBackend {
         self.0.add_image(file_id, data).await
     }
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()> {
-        self.0.remove_image(file_id).await
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
+        self.0.remove_image(file_id, presets).await
     }
 }

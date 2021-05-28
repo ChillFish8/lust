@@ -114,7 +114,7 @@ impl ImageStore for Backend {
         unimplemented!()
     }
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()> {
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         unimplemented!()
     }
 }

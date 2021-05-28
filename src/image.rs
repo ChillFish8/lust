@@ -125,8 +125,10 @@ pub async fn get_image(
 
 pub async fn delete_image(state: &mut State, file_id: Uuid) -> Result<()> {
     let storage = StorageBackend::take_from(state);
+    let cfg = StateConfig::take_from(state);
 
-    storage.remove_image(file_id).await?;
+    let presets = cfg.0.size_presets.keys().collect();
+    storage.remove_image(file_id ,presets).await?;
 
     Ok(())
 }

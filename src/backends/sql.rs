@@ -30,13 +30,109 @@ pub struct DatabaseConfig {
     pool_size: u32,
 }
 
-fn select(column: &str, preset: &str, placeholder: &str) -> String {
+
+fn build_select_qry(column: &str, preset: &str, placeholder: &str) -> String {
     format!(
         "SELECT {column} FROM {table} WHERE file_id = {placeholder} LIMIT 1;",
         column = column,
         table = preset,
         placeholder = placeholder,
     )
+}
+
+fn build_insert_qry(preset: &str, columns: &Vec<&str>, placeholders: &Vec<String>) -> String {
+    let columns = columns.join(", ");
+    let placeholders = placeholders.join(", ");
+    format!(
+        "INSERT INTO {table} ({columns}) VALUES ({placeholders});",
+        table = preset,
+        columns = columns,
+        placeholders = placeholders,
+    )
+}
+
+fn build_delete_queries(file_id: &str, presets: &Vec<&String>, placeholder: &str) -> Vec<String> {
+    let mut queries = vec![];
+    for preset in presets {
+        queries.push(format!(
+            "DELETE FROM {table} WHERE file_id = {placeholder};",
+            table = preset,
+            placeholder = placeholder,
+        ))
+    }
+
+    queries
+}
+
+/// Either extracts the value as a `&[u8]` from the row as `Some(BytesMut)`
+/// or becomes `None`.
+macro_rules! extract_or_none {
+    ( $e:expr, $c:expr ) => ({
+        if let Ok(row) = $e {
+            let data: &[u8] = row.get($c);
+            Some(BytesMut::from(data))
+        } else {
+            None
+        }
+    });
+}
+
+/// Builds a SQL query for the given preset (table) from
+/// the given data adding place holders for each value for
+/// prepared statements.
+macro_rules! build_insert {
+    ( $preset:expr, $data:expr, $placeholder:expr ) => ({
+        let mut columns: Vec<&str> = $data
+            .keys()
+            .map(|v| to_variant_name(v).expect("unreachable"))
+            .collect();
+        columns.insert(0, "file_id");
+
+        let values: Vec<BytesMut> = $data
+            .values()
+            .map(|v| v.clone())
+            .collect();
+
+        let placeholders: Vec<String> = (1..columns.len() + 1)
+            .map($placeholder)
+            .collect();
+
+        (build_insert_qry($preset, &columns, &placeholders), values)
+    });
+}
+
+/// Builds a sqlx query based on the given query string and values
+///
+/// This also accounts for the file_id being a uuid vs everything else
+/// being bytes.
+macro_rules! query_with_parameters {
+    ( $id:expr, $qry:expr, $values:expr ) => ({
+        let mut qry = sqlx::query($qry)
+            .bind($id);
+
+        for value in $values {
+            qry = qry.bind(value)
+        }
+
+        qry
+    });
+}
+
+/// Deletes a file with a given id from all presets.
+///
+/// Due to the nature of the Pool types but the similarity between
+/// each database code to delete files it makes more sense to put this
+/// in a macro over a function.
+macro_rules! delete_file {
+    ( $id:expr, $presets:expr, $placeholder:expr, $pool:expr ) => ({
+        let file_id = $id.to_string();
+        let queries = build_delete_queries(&file_id, $presets, $placeholder);
+
+        for qry in queries {
+            let query = sqlx::query(&qry).bind(&file_id);
+            query.execute($pool).await?;
+        }
+    });
 }
 
 /// A database backend set to handle the PostgreSQL database.
@@ -72,15 +168,15 @@ impl DatabaseLinker for PostgresBackend {
         }
 
         for preset in presets {
-            let query = format!(
+            let qry = format!(
                 "CREATE TABLE IF NOT EXISTS {table} ({columns})",
                 table = preset,
                 columns = columns.join(", ")
             );
 
-            let qry = sqlx::query(&query);
+            let query = sqlx::query(&qry);
 
-            qry.execute(&self.pool).await?;
+            query.execute(&self.pool).await?;
         }
 
         Ok(())
@@ -97,23 +193,32 @@ impl ImageStore for PostgresBackend {
     ) -> Option<BytesMut> {
         let column = to_variant_name(&format).expect("unreachable");
 
-        let qry = select(column, &preset, "$1");
+        let qry = build_select_qry(column, &preset, "$1");
         let qry = sqlx::query(&qry).bind(file_id.to_string());
 
-        if let Ok(row) = qry.fetch_one(&self.pool).await {
-            let data: &[u8] = row.get(column);
-            Some(BytesMut::from(data))
-        } else {
-            None
-        }
+        extract_or_none!(qry.fetch_one(&self.pool).await, column)
     }
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        unimplemented!()
+        for (preset, preset_data) in data {
+            let (qry, values) = build_insert!(
+                &preset,
+                preset_data,
+                |i| format!("${}", i)
+            );
+
+            let values_ = values.iter().map(|v| v.as_ref());
+            let query = query_with_parameters!(file_id.to_string(), &qry, values_);
+            query.execute(&self.pool).await?;
+        }
+
+        Ok(())
     }
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()> {
-        unimplemented!()
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
+        delete_file!(file_id, &presets, "$1", &self.pool);
+
+        Ok(())
     }
 }
 
@@ -150,15 +255,15 @@ impl DatabaseLinker for MySQLBackend {
         }
 
         for preset in presets {
-            let query = format!(
+            let qry = format!(
                 "CREATE TABLE IF NOT EXISTS {table} ({columns})",
                 table = preset,
                 columns = columns.join(", ")
             );
 
-            let qry = sqlx::query(&query);
+            let query = sqlx::query(&qry);
 
-            qry.execute(&self.pool).await?;
+            query.execute(&self.pool).await?;
         }
 
         Ok(())
@@ -175,23 +280,31 @@ impl ImageStore for MySQLBackend {
     ) -> Option<BytesMut> {
         let column = to_variant_name(&format).expect("unreachable");
 
-        let qry = select(column, &preset, "%s");
-        let qry = sqlx::query(&qry).bind(file_id.to_string());
+        let qry = build_select_qry(column, &preset, "?");
+        let query = sqlx::query(&qry).bind(file_id.to_string());
 
-        if let Ok(row) = qry.fetch_one(&self.pool).await {
-            let data: &[u8] = row.get(column);
-            Some(BytesMut::from(data))
-        } else {
-            None
-        }
+        extract_or_none!(query.fetch_one(&self.pool).await, column)
     }
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        unimplemented!()
+        for (preset, preset_data) in data {
+            let (qry, values) = build_insert!(
+                &preset,
+                preset_data,
+                |_| "?".to_string()
+            );
+
+            let values_ = values.iter().map(|v| v.as_ref());
+            let query = query_with_parameters!(file_id.to_string(), &qry, values_);
+            query.execute(&self.pool).await?;
+        }
+
+        Ok(())
     }
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()> {
-        unimplemented!()
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
+        delete_file!(file_id, &presets, "?", &self.pool);
+        Ok(())
     }
 }
 
@@ -240,15 +353,15 @@ impl DatabaseLinker for SqliteBackend {
         }
 
         for preset in presets {
-            let query = format!(
+            let qry = format!(
                 "CREATE TABLE IF NOT EXISTS {table} ({columns})",
                 table = preset,
                 columns = columns.join(", ")
             );
 
-            let qry = sqlx::query(&query);
+            let query = sqlx::query(&qry);
 
-            qry.execute(&self.pool).await?;
+            query.execute(&self.pool).await?;
         }
 
         Ok(())
@@ -265,22 +378,30 @@ impl ImageStore for SqliteBackend {
     ) -> Option<BytesMut> {
         let column = to_variant_name(&format).expect("unreachable");
 
-        let qry = select(column, &preset, "?");
-        let qry = sqlx::query(&qry).bind(file_id.to_string());
+        let qry = build_select_qry(column, &preset, "?");
+        let query = sqlx::query(&qry).bind(file_id.to_string());
 
-        if let Ok(row) = qry.fetch_one(&self.pool).await {
-            let data: &[u8] = row.get(column);
-            Some(BytesMut::from(data))
-        } else {
-            None
-        }
+        extract_or_none!(query.fetch_one(&self.pool).await, column)
     }
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        unimplemented!()
+        for (preset, preset_data) in data {
+            let (qry, values) = build_insert!(
+                &preset,
+                preset_data,
+                |_| "?".to_string()
+            );
+
+            let values_ = values.iter().map(|v| v.as_ref());
+            let query = query_with_parameters!(file_id.to_string(), &qry, values_);
+            query.execute(&self.pool).await?;
+        }
+
+        Ok(())
     }
 
-    async fn remove_image(&self, file_id: Uuid) -> Result<()> {
-        unimplemented!()
+    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
+        delete_file!(file_id, &presets, "?", &self.pool);
+        Ok(())
     }
 }
