@@ -2,10 +2,14 @@ import base64
 import requests
 import uuid
 
+from pprint import pprint
+
 
 def get_base_data(file: str) -> str:
     with open(file, "rb") as file:
-        return base64.standard_b64encode(file.read()).decode("utf-8")
+        data = file.read()
+        print(f"original {len(data)}")
+        return base64.standard_b64encode(data).decode("utf-8")
 
 
 def test_png_upload1():
@@ -16,7 +20,7 @@ def test_png_upload1():
     }
 
     r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
-    print(r.json())
+    pprint(r.json())
 
     assert r.status_code == 200
 
