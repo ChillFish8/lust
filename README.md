@@ -5,7 +5,7 @@
 #
 
 ## What is Lust?
-Lust is a static image server designed to automatically convert uploaded image to several formats and preset sizes with automatic compression optimizations along with scaling in mind.
+Lust is a static image server designed to automatically convert uploaded image to several formats and preset sizes with scaling in mind.
  
 Lust stores images via any of given database backends:
  
