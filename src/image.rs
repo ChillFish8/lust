@@ -13,7 +13,6 @@ use crate::context::{ImageData, ImageDataSizes, ImageFormat, ImagePresetDataSize
 use crate::storage::StorageBackend;
 use crate::traits::ImageStore;
 
-
 macro_rules! convert {
     ( $e:expr, $d:expr ) => {{
         || -> anyhow::Result<BytesMut> {
@@ -34,12 +33,9 @@ macro_rules! generate {
 }
 
 macro_rules! is_enabled {
-    ( $format:expr, $options:expr ) => ({
-        $options
-            .get(&$format)
-            .map(|v| *v)
-            .unwrap_or(true)
-    })
+    ( $format:expr, $options:expr ) => {{
+        $options.get(&$format).map(|v| *v).unwrap_or(true)
+    }};
 }
 
 fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, ImageDataSizes)> {
@@ -97,12 +93,24 @@ pub async fn process_new_image(
     let mut converted_sizes = HashMap::with_capacity(presets.len());
     let mut converted_data = HashMap::with_capacity(presets.len());
     let original = load_from_memory_with_format(&data, fmt)?;
-    generate!("original", original, converted_sizes, converted_data, cfg.clone());
+    generate!(
+        "original",
+        original,
+        converted_sizes,
+        converted_data,
+        cfg.clone()
+    );
 
     for (preset_name, size) in presets {
         let im = original.resize(size.width, size.height, imageops::FilterType::Nearest);
 
-        generate!(preset_name, im, converted_sizes, converted_data, cfg.clone());
+        generate!(
+            preset_name,
+            im,
+            converted_sizes,
+            converted_data,
+            cfg.clone()
+        );
     }
 
     let file_id = Uuid::new_v4();

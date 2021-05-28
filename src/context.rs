@@ -20,7 +20,6 @@ pub enum ImageFormat {
     WebP,
 }
 
-
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 pub struct ImageGet {
     pub format: Option<ImageFormat>,

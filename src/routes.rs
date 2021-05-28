@@ -1,4 +1,5 @@
 use base64::{decode, encode};
+use flate2::read::GzDecoder;
 use std::io::Read;
 
 use gotham::handler::HandlerResult;
@@ -11,8 +12,6 @@ use crate::context::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::image::{delete_image, get_image, process_new_image};
 use crate::response::{empty_response, image_response, json_response};
 use crate::PathExtractor;
-use flate2::read::GzDecoder;
-
 
 pub async fn get_file(mut state: State) -> HandlerResult {
     let path_vars = PathExtractor::take_from(&mut state);
@@ -54,7 +53,7 @@ pub async fn get_file(mut state: State) -> HandlerResult {
                     ),
                 ));
             }
-            Ok((state, image_response(format, data,)))
+            Ok((state, image_response(format, data)))
         }
     }
 }

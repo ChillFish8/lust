@@ -1,8 +1,8 @@
 use gotham::hyper::http::{header, Response, StatusCode};
 use gotham::hyper::Body;
 
-use headers::HeaderMapExt;
 use headers::ContentType;
+use headers::HeaderMapExt;
 
 use bytes::BytesMut;
 use serde_json::Value;
