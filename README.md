@@ -57,7 +57,7 @@ Lust will serve given images / gifs as Basse64 data both Gzip compressed and un-
 a JSON response unlike the tradition raw response.
 
 ## Data Efficiency
-Lust's use of compression for storage allows it to achieve relatively good data store despite creating several versions of the same image.
+Lust's data storage efficiency is roughly the same as storing on a plain file system outside of any system the database backend employs when storing the data.
 
 For example lets upload an image: 
 <p align="left">
