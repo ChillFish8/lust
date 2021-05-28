@@ -27,7 +27,6 @@ simple_logger = "1.11.0"
 gotham = "0.6.0"
 gotham_derive = "0.6.0"
 headers = "0.3"
-mime = "0.3"
 
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
