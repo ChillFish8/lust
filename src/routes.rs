@@ -92,16 +92,19 @@ pub async fn get_file(mut state: State) -> HandlerResult {
         Some(data) => {
             if params.encode.unwrap_or(false) {
                 let encoded = encode(data.as_ref());
-                return Ok((state, json_response(
-                    StatusCode::OK,
-                    Some(json!({
-                            "compressed": compress,
-                            "image": encoded,
-                    }))
-                )))
+                return Ok((
+                    state,
+                    json_response(
+                        StatusCode::OK,
+                        Some(json!({
+                                "compressed": compress,
+                                "image": encoded,
+                        })),
+                    ),
+                ));
             }
             Ok((state, image_response(format, data, compress)))
-        },
+        }
     }
 }
 

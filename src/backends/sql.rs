@@ -1,18 +1,14 @@
-#![allow(unused)]
-
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use serde::Deserialize;
 use serde_variant::to_variant_name;
-use std::env::var;
-use std::sync::Arc;
 use uuid::Uuid;
 
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
-use sqlx::{ConnectOptions, Pool, Row};
+use sqlx::Row;
 
 use crate::context::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
@@ -29,7 +25,6 @@ pub struct DatabaseConfig {
     connection_uri: String,
     pool_size: u32,
 }
-
 
 fn build_select_qry(column: &str, preset: &str, placeholder: &str) -> String {
     format!(
@@ -51,7 +46,7 @@ fn build_insert_qry(preset: &str, columns: &Vec<&str>, placeholders: &Vec<String
     )
 }
 
-fn build_delete_queries(file_id: &str, presets: &Vec<&String>, placeholder: &str) -> Vec<String> {
+fn build_delete_queries(presets: &Vec<&String>, placeholder: &str) -> Vec<String> {
     let mut queries = vec![];
     for preset in presets {
         queries.push(format!(
@@ -67,38 +62,33 @@ fn build_delete_queries(file_id: &str, presets: &Vec<&String>, placeholder: &str
 /// Either extracts the value as a `&[u8]` from the row as `Some(BytesMut)`
 /// or becomes `None`.
 macro_rules! extract_or_none {
-    ( $e:expr, $c:expr ) => ({
+    ( $e:expr, $c:expr ) => {{
         if let Ok(row) = $e {
             let data: &[u8] = row.get($c);
             Some(BytesMut::from(data))
         } else {
             None
         }
-    });
+    }};
 }
 
 /// Builds a SQL query for the given preset (table) from
 /// the given data adding place holders for each value for
 /// prepared statements.
 macro_rules! build_insert {
-    ( $preset:expr, $data:expr, $placeholder:expr ) => ({
+    ( $preset:expr, $data:expr, $placeholder:expr ) => {{
         let mut columns: Vec<&str> = $data
             .keys()
             .map(|v| to_variant_name(v).expect("unreachable"))
             .collect();
         columns.insert(0, "file_id");
 
-        let values: Vec<BytesMut> = $data
-            .values()
-            .map(|v| v.clone())
-            .collect();
+        let values: Vec<BytesMut> = $data.values().map(|v| v.clone()).collect();
 
-        let placeholders: Vec<String> = (1..columns.len() + 1)
-            .map($placeholder)
-            .collect();
+        let placeholders: Vec<String> = (1..columns.len() + 1).map($placeholder).collect();
 
         (build_insert_qry($preset, &columns, &placeholders), values)
-    });
+    }};
 }
 
 /// Builds a sqlx query based on the given query string and values
@@ -106,16 +96,15 @@ macro_rules! build_insert {
 /// This also accounts for the file_id being a uuid vs everything else
 /// being bytes.
 macro_rules! query_with_parameters {
-    ( $id:expr, $qry:expr, $values:expr ) => ({
-        let mut qry = sqlx::query($qry)
-            .bind($id);
+    ( $id:expr, $qry:expr, $values:expr ) => {{
+        let mut qry = sqlx::query($qry).bind($id);
 
         for value in $values {
             qry = qry.bind(value)
         }
 
         qry
-    });
+    }};
 }
 
 /// Deletes a file with a given id from all presets.
@@ -124,20 +113,19 @@ macro_rules! query_with_parameters {
 /// each database code to delete files it makes more sense to put this
 /// in a macro over a function.
 macro_rules! delete_file {
-    ( $id:expr, $presets:expr, $placeholder:expr, $pool:expr ) => ({
+    ( $id:expr, $presets:expr, $placeholder:expr, $pool:expr ) => {{
         let file_id = $id.to_string();
-        let queries = build_delete_queries(&file_id, $presets, $placeholder);
+        let queries = build_delete_queries($presets, $placeholder);
 
         for qry in queries {
             let query = sqlx::query(&qry).bind(&file_id);
             query.execute($pool).await?;
         }
-    });
+    }};
 }
 
 /// A database backend set to handle the PostgreSQL database.
 pub struct PostgresBackend {
-    cfg: DatabaseConfig,
     pool: PgPool,
 }
 
@@ -153,7 +141,7 @@ impl PostgresBackend {
             .connect(&cfg.connection_uri)
             .await?;
 
-        Ok(Self { cfg, pool })
+        Ok(Self { pool })
     }
 }
 
@@ -201,11 +189,7 @@ impl ImageStore for PostgresBackend {
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
         for (preset, preset_data) in data {
-            let (qry, values) = build_insert!(
-                &preset,
-                preset_data,
-                |i| format!("${}", i)
-            );
+            let (qry, values) = build_insert!(&preset, preset_data, |i| format!("${}", i));
 
             let values_ = values.iter().map(|v| v.as_ref());
             let query = query_with_parameters!(file_id.to_string(), &qry, values_);
@@ -224,7 +208,6 @@ impl ImageStore for PostgresBackend {
 
 /// A database backend set to handle the MySQL / MariaDB database.
 pub struct MySQLBackend {
-    cfg: DatabaseConfig,
     pool: MySqlPool,
 }
 
@@ -240,7 +223,7 @@ impl MySQLBackend {
             .connect(&cfg.connection_uri)
             .await?;
 
-        Ok(Self { cfg, pool })
+        Ok(Self { pool })
     }
 }
 
@@ -288,11 +271,7 @@ impl ImageStore for MySQLBackend {
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
         for (preset, preset_data) in data {
-            let (qry, values) = build_insert!(
-                &preset,
-                preset_data,
-                |_| "?".to_string()
-            );
+            let (qry, values) = build_insert!(&preset, preset_data, |_| "?".to_string());
 
             let values_ = values.iter().map(|v| v.as_ref());
             let query = query_with_parameters!(file_id.to_string(), &qry, values_);
@@ -319,7 +298,6 @@ impl ImageStore for MySQLBackend {
 /// If in-memory is used this can produce undefined behaviour in terms
 /// of what data is perceived to be stored.
 pub struct SqliteBackend {
-    cfg: DatabaseConfig,
     pool: SqlitePool,
 }
 
@@ -338,7 +316,7 @@ impl SqliteBackend {
             .connect(&cfg.connection_uri)
             .await?;
 
-        Ok(Self { cfg, pool })
+        Ok(Self { pool })
     }
 }
 
@@ -386,11 +364,7 @@ impl ImageStore for SqliteBackend {
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
         for (preset, preset_data) in data {
-            let (qry, values) = build_insert!(
-                &preset,
-                preset_data,
-                |_| "?".to_string()
-            );
+            let (qry, values) = build_insert!(&preset, preset_data, |_| "?".to_string());
 
             let values_ = values.iter().map(|v| v.as_ref());
             let query = query_with_parameters!(file_id.to_string(), &qry, values_);

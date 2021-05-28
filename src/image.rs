@@ -37,35 +37,53 @@ macro_rules! compress {
 }
 
 macro_rules! generate {
-    ( $n:expr, $e:expr, $hm1:expr, $hm2:expr ) => ({
-        let (data, sizes) = convert_image(&$e)?;
+    ( $n:expr, $e:expr, $hm1:expr, $hm2:expr, $cfg:expr ) => ({
+        let (data, sizes) = convert_image(&$e, $cfg)?;
         $hm1.insert($n.to_string(), sizes);
         $hm2.insert($n.to_string(), data);
     })
 }
 
-fn convert_image(im: &DynamicImage) -> Result<(ImageData, ImageDataSizes)> {
-    let png = convert!(&im, image::ImageFormat::Png)?;
-    let jpeg = convert!(&im, image::ImageFormat::Jpeg)?;
-    let gif = convert!(&im, image::ImageFormat::Gif)?;
-    let webp = BytesMut::from(Encoder::from_image(&im).encode_lossless().as_ref());
+macro_rules! is_enabled {
+    ( $format:expr, $options:expr ) => ({
+        $options
+            .get(&$format)
+            .map(|v| *v)
+            .unwrap_or(true)
+    })
+}
 
-    let compressed_png = compress!(png);
-    let compressed_jpeg = compress!(jpeg);
-    let compressed_gif = compress!(gif);
-    let compressed_webp = compress!(webp);
-
+fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, ImageDataSizes)> {
     let mut resulting_sizes = HashMap::with_capacity(4);
-    resulting_sizes.insert(ImageFormat::Png, compressed_png.len());
-    resulting_sizes.insert(ImageFormat::Jpeg, compressed_jpeg.len());
-    resulting_sizes.insert(ImageFormat::Gif, compressed_gif.len());
-    resulting_sizes.insert(ImageFormat::WebP, compressed_webp.len());
-
     let mut resulting_data = HashMap::with_capacity(4);
-    resulting_data.insert(ImageFormat::Png, compressed_png);
-    resulting_data.insert(ImageFormat::Jpeg, compressed_jpeg);
-    resulting_data.insert(ImageFormat::Gif, compressed_gif);
-    resulting_data.insert(ImageFormat::WebP, compressed_webp);
+
+    if is_enabled!(ImageFormat::Png, cfg.0.formats) {
+        let png = convert!(&im, image::ImageFormat::Png)?;
+        let compressed_png = compress!(png);
+        resulting_sizes.insert(ImageFormat::Png, compressed_png.len());
+        resulting_data.insert(ImageFormat::Png, compressed_png);
+    }
+
+    if is_enabled!(ImageFormat::Jpeg, cfg.0.formats) {
+        let jpeg = convert!(&im, image::ImageFormat::Jpeg)?;
+        let compressed_jpeg = compress!(jpeg);
+        resulting_sizes.insert(ImageFormat::Jpeg, compressed_jpeg.len());
+        resulting_data.insert(ImageFormat::Jpeg, compressed_jpeg);
+    }
+
+    if is_enabled!(ImageFormat::Gif, cfg.0.formats) {
+        let gif = convert!(&im, image::ImageFormat::Gif)?;
+        let compressed_gif = compress!(gif);
+        resulting_sizes.insert(ImageFormat::Gif, compressed_gif.len());
+        resulting_data.insert(ImageFormat::Gif, compressed_gif);
+    }
+
+    if is_enabled!(ImageFormat::WebP, cfg.0.formats) {
+        let webp = BytesMut::from(Encoder::from_image(&im).encode_lossless().as_ref());
+        let compressed_webp = compress!(webp);
+        resulting_sizes.insert(ImageFormat::WebP, compressed_webp.len());
+        resulting_data.insert(ImageFormat::WebP, compressed_webp);
+    }
 
     Ok((resulting_data, resulting_sizes))
 }
@@ -89,12 +107,12 @@ pub async fn process_new_image(
     let mut converted_sizes = HashMap::with_capacity(presets.len());
     let mut converted_data = HashMap::with_capacity(presets.len());
     let original = load_from_memory_with_format(&data, fmt)?;
-    generate!("original", original, converted_sizes, converted_data);
+    generate!("original", original, converted_sizes, converted_data, cfg.clone());
 
     for (preset_name, size) in presets {
         let im = original.resize(size.width, size.height, imageops::FilterType::Nearest);
 
-        generate!(preset_name, im, converted_sizes, converted_data);
+        generate!(preset_name, im, converted_sizes, converted_data, cfg.clone());
     }
 
     let file_id = Uuid::new_v4();
@@ -128,7 +146,7 @@ pub async fn delete_image(state: &mut State, file_id: Uuid) -> Result<()> {
     let cfg = StateConfig::take_from(state);
 
     let presets = cfg.0.size_presets.keys().collect();
-    storage.remove_image(file_id ,presets).await?;
+    storage.remove_image(file_id, presets).await?;
 
     Ok(())
 }
