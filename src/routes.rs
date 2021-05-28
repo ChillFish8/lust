@@ -1,4 +1,4 @@
-use base64::decode;
+use base64::{decode, encode};
 use flate2::read::GzDecoder;
 use std::io::Read;
 
@@ -49,15 +49,10 @@ fn maybe_gzip(headers: &HeaderMap) -> bool {
 }
 
 pub async fn get_file(mut state: State) -> HandlerResult {
-    println!("yes");
     let path_vars = PathExtractor::take_from(&mut state);
-    println!("yes");
     let params = ImageGet::take_from(&mut state);
-    println!("yes");
     let config = StateConfig::take_from(&mut state);
-    println!("yes");
     let headers = HeaderMap::take_from(&mut state);
-    println!("yes");
 
     let file_id = path_vars.file_id;
     let format = params
@@ -94,7 +89,17 @@ pub async fn get_file(mut state: State) -> HandlerResult {
 
     match img {
         None => Ok((state, empty_response(StatusCode::NOT_FOUND))),
-        Some(data) => Ok((state, image_response(format, data, compress))),
+        Some(data) => {
+            if params.encode.unwrap_or(false) {
+                let encoded = encode(data.as_ref());
+                return Ok((state, json_response(
+                    StatusCode::OK,
+                    Some(json!({
+                        "data": encoded
+                })))))
+            }
+            Ok((state, image_response(format, data, compress)))
+        },
     }
 }
 
