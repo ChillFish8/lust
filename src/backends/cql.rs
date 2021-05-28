@@ -2,18 +2,18 @@ use cdrs::authenticators::StaticPasswordAuthenticator;
 use cdrs::cluster::session::{new as new_session, Session};
 use cdrs::cluster::{ClusterTcpConfig, NodeTcpConfigBuilder, TcpConnectionPool};
 use cdrs::load_balancing::RoundRobin;
-use cdrs::types::IntoRustByName;
+use cdrs::query::*;
 use cdrs::types::blob::Blob;
 use cdrs::types::value::Value;
-use cdrs::query::*;
+use cdrs::types::IntoRustByName;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
+use log::warn;
 use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
-use log::warn;
 
 use crate::context::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
@@ -48,7 +48,7 @@ macro_rules! log_and_convert_error {
             Err(e) => {
                 warn!("failed to execute query {:?}", e);
                 None
-            },
+            }
         }
     }};
 }
@@ -128,8 +128,7 @@ impl ImageStore for Backend {
         );
 
         let values = query_values!(file_id);
-        let res = self.session
-            .query_with_values(qry, values).await;
+        let res = self.session.query_with_values(qry, values).await;
 
         let res = log_and_convert_error!(res)?;
         let res = log_and_convert_error!(res.get_body())?;
@@ -159,10 +158,7 @@ impl ImageStore for Backend {
                 .map(|d| Value::new_normal(d.to_vec()))
                 .collect();
 
-            values.insert(
-                0,
-                Value::new_normal(file_id.as_bytes().to_vec())
-            );
+            values.insert(0, Value::new_normal(file_id.as_bytes().to_vec()));
 
             let qry = format!(
                 "INSERT INTO {table} (file_id, {columns}) VALUES (?, {placeholders})",
@@ -172,8 +168,7 @@ impl ImageStore for Backend {
             );
 
             let values = QueryValues::SimpleValues(values);
-            let _ = self.session
-                .query_with_values(qry, values).await?;
+            let _ = self.session.query_with_values(qry, values).await?;
         }
 
         Ok(())
@@ -181,14 +176,10 @@ impl ImageStore for Backend {
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         for preset in presets {
-            let qry = format!(
-                "DELETE FROM {table} WHERE file_id = ?;",
-                table = preset,
-            );
+            let qry = format!("DELETE FROM {table} WHERE file_id = ?;", table = preset,);
 
             let values = query_values!(file_id);
-            let _ = self.session
-                .query_with_values(qry, values).await?;
+            let _ = self.session.query_with_values(qry, values).await?;
         }
 
         Ok(())
