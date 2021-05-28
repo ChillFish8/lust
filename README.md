@@ -13,7 +13,15 @@ Lust stores images via any of given database backends:
 - PostgreSQL
 - MySQL / MariaDB
 - Sqlite (file / temp file only)
- 
+
+## Getting started
+
+#### Installation
+You can download a pre-made binary from the given github releases, binaries exist for both linux and windows (x64 and x86) or you can build from source.
+Building just requires the tradition `cargo build --release`.
+
+#### After Instalition
+See the [getting started page]() for more information after installation.
  
 ## Formats
 Lust supports any of the following formats: 
@@ -47,3 +55,4 @@ This behavour can be toggled using the `serve_compression_mode` ket with a value
 
 Lust will serve given images / gifs as Basse64 data both Gzip compressed and un-compressed via the `encode` query parameter (`true`/`false`) this will return
 a JSON response unlike the tradition raw response.
+
