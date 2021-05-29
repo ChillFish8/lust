@@ -20,8 +20,11 @@ use gotham::router::Router;
 use gotham_derive::{StateData, StaticResponseExtender};
 
 use anyhow::Result;
+use bytes::BytesMut;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use log::LevelFilter;
+use lru::LruCache;
+use parking_lot::RwLock;
 use serde::Deserialize;
 use simple_logger::SimpleLogger;
 use std::net::SocketAddr;
@@ -34,21 +37,37 @@ use crate::context::{ImageFormat, ImageGet, ImageRemove};
 use crate::storage::{Backend, DatabaseBackend, StorageBackend};
 use crate::traits::DatabaseLinker;
 
+/// A regex string for validating uuids in the request path.
 static UUID_REGEX: &str =
     "^[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}$";
 
+/// Cheaply cloneable lock around a LRU cache.
+pub type CacheStore = Arc<RwLock<LruCache<(Uuid, ImageFormat), BytesMut>>>;
+
+/// A simple extractor for taking the file_id out of the path
+/// of the request as a UUID.
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct PathExtractor {
     file_id: Uuid,
 }
 
+/// A wrapper around the `CacheStore` type letting it be put into Gotham's
+/// shared state.
+#[derive(Clone, StateData)]
+struct CacheState(pub CacheStore);
+
 /// Constructs all the routes for the server.
 fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Router> {
     let base = config.0.base_data_path.clone();
+    let cache_size = config.0.cache_size;
+
+    let cache = CacheState(Arc::new(RwLock::new(LruCache::new(cache_size))));
+
     let pipeline = new_pipeline()
         .add(GothSimpleLogger::new(log::Level::Info))
         .add(StateMiddleware::new(backend))
         .add(StateMiddleware::new(config))
+        .add(StateMiddleware::new(cache))
         .build();
     let (chain, pipelines) = single_pipeline(pipeline);
 

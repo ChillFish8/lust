@@ -33,6 +33,7 @@ pub struct Config {
     pub default_serving_preset: String,
     pub default_serving_format: ImageFormat,
     pub webp_quality: Option<f32>,
+    pub cache_size: usize,
 }
 
 impl Config {
@@ -107,6 +108,7 @@ impl Config {
             "default_serving_preset": "original",
             "default_serving_format": "webp",
             "webp_ratio": None::<f32>,
+            "cache_size": 500,
         }))
     }
 }

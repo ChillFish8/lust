@@ -1,8 +1,7 @@
 import base64
 import requests
 import uuid
-
-from pprint import pprint
+import _thread
 
 
 def get_base_data(file: str) -> str:
@@ -19,10 +18,8 @@ def test_png_upload1():
         "data": data,
     }
 
-    r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
-    pprint(r.json())
-
-    assert r.status_code == 200
+    requests.post("http://127.0.0.1:7070/admin/create", json=payload)
+    print("done")
 
 
 def test_get_img1():
@@ -45,4 +42,4 @@ if __name__ == '__main__':
     test_png_upload1()
     test_get_img1()
     test_get_img2()
-    test_remove_img1()
+    # test_remove_img1()
