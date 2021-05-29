@@ -23,7 +23,7 @@ def test_png_upload1():
 
 
 def test_get_img1():
-    r = requests.get(f"http://127.0.0.1:7070/images/394e7905-f501-4be8-902f-b8b7ea9d157a")
+    r = requests.get(f"http://127.0.0.1:7070/images/7db542f9-9bee-4311-be5c-f68bd5e7a7e7")
     assert r.status_code == 200
 
 
@@ -33,7 +33,7 @@ def test_get_img2():
 
 
 def test_remove_img1():
-    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/394e7905-f501-4be8-902f-b8b7ea9d157a")
+    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/a3856be9-441d-4f07-9151-85ab1c89e15d")
     print(r.content)
     assert r.status_code == 200
 
@@ -42,4 +42,4 @@ if __name__ == '__main__':
     test_png_upload1()
     test_get_img1()
     test_get_img2()
-    # test_remove_img1()
+    test_remove_img1()

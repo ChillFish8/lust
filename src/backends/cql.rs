@@ -136,10 +136,47 @@ impl ImageStore for Backend {
     }
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        unimplemented!()
+        for (preset, preset_data) in data {
+            let columns: String = preset_data.keys()
+                .map(|v| to_variant_name(v).expect("unreachable"))
+                .collect::<Vec<&str>>()
+                .join(", ");
+
+            let placeholders: String = (0..preset_data.len())
+                .map(|_| "?")
+                .collect::<Vec<&str>>()
+                .join(", ");
+
+            let mut values: Vec<Vec<u8>> = preset_data.values()
+                .map(|v| v.to_vec())
+                .collect();
+
+            values.insert(0, file_id.as_bytes().to_vec());
+
+            let qry = format!(
+                "INSERT INTO lust_ks.{table} (file_id, {columns}) VALUES (?, {placeholders});",
+                table = preset,
+                columns = columns,
+                placeholders= placeholders,
+            );
+
+            let prepared = self.session.prepare(qry).await?;
+            self.session.execute(&prepared, values).await?;
+        }
+
+        Ok(())
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-        unimplemented!()
+        for preset in presets {
+            let qry = format!(
+                "DELETE FROM lust_ks.{table} WHERE file_id = ?;",
+                table = preset,
+            );
+
+            self.session.query(qry, (file_id.as_bytes().to_vec(),)).await?;
+        }
+
+        Ok(())
     }
 }
