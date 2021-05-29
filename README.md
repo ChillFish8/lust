@@ -22,6 +22,11 @@ Currently you can build from source, re-built binary setups will be provided lat
 #### After Instalition
 See the [getting started page](https://github.com/ChillFish8/lust/blob/master/getting-started.md) for more information after installation.
  
+## Caching
+Lust makes use of a Least Recently Used in-memory cache which can be adjusted for your needs via the `cache_size` key in the configuration file. 
+The larger the number the more images it will cache at once and vice versa. 
+*NOTE: With bigger images this can create much higher RAM usage*
+
 ## Formats
 Lust supports any of the following formats: 
 - Png
@@ -43,7 +48,7 @@ and should be a float from `0.0` to `100.0` with the quality of the image changi
 
 ## Base64 Support
 
-Lust will serve given images / gifs as Basse64 data both Gzip compressed and un-compressed via the `encode` query parameter (`true`/`false`) this will return
+Lust will serve given images / gifs as Basse64 data the `encode` query parameter (`true`/`false`) this will return
 a JSON response unlike the tradition raw response.
 
 ## Data Efficiency
