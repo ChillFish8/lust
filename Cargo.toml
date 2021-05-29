@@ -33,5 +33,5 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 hashbrown = { version = "0.11.2", features = ["serde"] }
-cdrs = { git = "https://github.com/AlexPikalov/cdrs.git", branch = "async-tokio" }
+scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main" }
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres" ] }

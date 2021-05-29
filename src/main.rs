@@ -10,8 +10,6 @@ mod traits;
 
 #[macro_use]
 extern crate serde_json;
-#[macro_use]
-extern crate cdrs;
 
 use gotham::middleware::logger::SimpleLogger as GothSimpleLogger;
 use gotham::middleware::state::StateMiddleware;

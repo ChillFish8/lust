@@ -1,11 +1,7 @@
-use cdrs::authenticators::StaticPasswordAuthenticator;
-use cdrs::cluster::session::{new as new_session, Session};
-use cdrs::cluster::{ClusterTcpConfig, NodeTcpConfigBuilder, TcpConnectionPool};
-use cdrs::load_balancing::RoundRobin;
-use cdrs::query::*;
-use cdrs::types::blob::Blob;
-use cdrs::types::value::Value;
-use cdrs::types::IntoRustByName;
+use scylla::cql_to_rust::FromRow;
+use scylla::macros::FromRow;
+use scylla::transport::session::{IntoTypedRows, Session};
+use scylla::SessionBuilder;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -19,7 +15,7 @@ use crate::context::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 /// Represents a connection pool session with a round robbin load balancer.
-type CurrentSession = Session<RoundRobin<TcpConnectionPool<StaticPasswordAuthenticator>>>;
+type CurrentSession = Session;
 
 /// The configuration for a cassandra database.
 ///
@@ -53,6 +49,9 @@ macro_rules! log_and_convert_error {
     }};
 }
 
+
+
+
 /// A cassandra database backend.
 pub struct Backend {
     session: CurrentSession,
@@ -60,19 +59,11 @@ pub struct Backend {
 
 impl Backend {
     pub async fn connect(cfg: DatabaseConfig) -> Result<Self> {
-        let mut nodes = Vec::new();
-        for node in cfg.clusters.iter() {
-            let node = NodeTcpConfigBuilder::new(
-                node,
-                StaticPasswordAuthenticator::new(cfg.user.clone(), cfg.password.clone()),
-            )
-            .build();
-
-            nodes.push(node);
-        }
-
-        let cluster_config = ClusterTcpConfig(nodes);
-        let session = new_session(&cluster_config, RoundRobin::new()).await?;
+        let session = SessionBuilder::new()
+            .user(cfg.user, cfg.password)
+            .known_nodes(cfg.clusters.as_ref())
+            .build()
+            .await?;
 
         let create_ks = format!(
             r#"
@@ -82,7 +73,7 @@ impl Backend {
             &cfg.replication_class, cfg.replication_factor
         );
 
-        let _ = session.query(create_ks).await?;
+        let _ = session.query(create_ks, &[]).await?;
 
         Ok(Self { session })
     }
@@ -105,7 +96,7 @@ impl DatabaseLinker for Backend {
                 columns = columns.join(", ")
             );
 
-            self.session.query(query).await?;
+            self.session.query(query, &[]).await?;
         }
 
         Ok(())
@@ -127,61 +118,26 @@ impl ImageStore for Backend {
             table = preset,
         );
 
-        let values = query_values!(file_id);
-        let res = self.session.query_with_values(qry, values).await;
+        let prepared = log_and_convert_error!(
+            self.session.prepare(qry,).await
+        )?;
 
-        let res = log_and_convert_error!(res)?;
-        let res = log_and_convert_error!(res.get_body())?;
-        let rows = res.into_rows()?;
-        let first = &rows[0];
-        let value: Option<Blob> = log_and_convert_error!(first.get_by_name(column))?;
-        let value: Vec<u8> = value?.into_vec();
-        let ref_: &[u8] = value.as_ref();
+        let query_result = log_and_convert_error!(
+            self.session.execute(&prepared, (file_id,)).await
+        )?;
+
+        let mut rows = query_result.rows?;
+        let row = rows.pop()?;
+        let (data,) = log_and_convert_error!(row.into_typed::<(Vec<u8>,)>())?;
+        let ref_: &[u8] = data.as_ref();
         Some(BytesMut::from(ref_))
     }
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        for (preset, preset_data) in data {
-            let columns = preset_data
-                .keys()
-                .map(|v| to_variant_name(v).expect("unreachable"))
-                .collect::<Vec<&str>>()
-                .join(", ");
-
-            let placeholders = (1..preset_data.len() + 1)
-                .map(|_| "?")
-                .collect::<Vec<&str>>()
-                .join(", ");
-
-            let mut values: Vec<Value> = preset_data
-                .values()
-                .map(|d| Value::new_normal(d.to_vec()))
-                .collect();
-
-            values.insert(0, Value::new_normal(file_id.as_bytes().to_vec()));
-
-            let qry = format!(
-                "INSERT INTO {table} (file_id, {columns}) VALUES (?, {placeholders})",
-                table = preset,
-                columns = columns,
-                placeholders = placeholders,
-            );
-
-            let values = QueryValues::SimpleValues(values);
-            let _ = self.session.query_with_values(qry, values).await?;
-        }
-
-        Ok(())
+        unimplemented!()
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-        for preset in presets {
-            let qry = format!("DELETE FROM {table} WHERE file_id = ?;", table = preset,);
-
-            let values = query_values!(file_id);
-            let _ = self.session.query_with_values(qry, values).await?;
-        }
-
-        Ok(())
+        unimplemented!()
     }
 }
