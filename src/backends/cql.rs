@@ -4,7 +4,7 @@ use scylla::SessionBuilder;
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
-use log::{warn, info, debug};
+use log::{debug, info, warn};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
@@ -46,7 +46,6 @@ macro_rules! log_and_convert_error {
         }
     }};
 }
-
 
 /// A cassandra database backend.
 pub struct Backend {
@@ -120,13 +119,10 @@ impl ImageStore for Backend {
             table = preset,
         );
 
-        let prepared = log_and_convert_error!(
-            self.session.prepare(qry,).await
-        )?;
+        let prepared = log_and_convert_error!(self.session.prepare(qry,).await)?;
 
-        let query_result = log_and_convert_error!(
-            self.session.execute(&prepared, (file_id,)).await
-        )?;
+        let query_result =
+            log_and_convert_error!(self.session.execute(&prepared, (file_id,)).await)?;
 
         let mut rows = query_result.rows?;
         let row = rows.pop()?;
@@ -137,7 +133,8 @@ impl ImageStore for Backend {
 
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
         for (preset, preset_data) in data {
-            let columns: String = preset_data.keys()
+            let columns: String = preset_data
+                .keys()
                 .map(|v| to_variant_name(v).expect("unreachable"))
                 .collect::<Vec<&str>>()
                 .join(", ");
@@ -147,9 +144,7 @@ impl ImageStore for Backend {
                 .collect::<Vec<&str>>()
                 .join(", ");
 
-            let mut values: Vec<Vec<u8>> = preset_data.values()
-                .map(|v| v.to_vec())
-                .collect();
+            let mut values: Vec<Vec<u8>> = preset_data.values().map(|v| v.to_vec()).collect();
 
             values.insert(0, file_id.as_bytes().to_vec());
 
@@ -157,7 +152,7 @@ impl ImageStore for Backend {
                 "INSERT INTO lust_ks.{table} (file_id, {columns}) VALUES (?, {placeholders});",
                 table = preset,
                 columns = columns,
-                placeholders= placeholders,
+                placeholders = placeholders,
             );
 
             let prepared = self.session.prepare(qry).await?;
@@ -174,7 +169,9 @@ impl ImageStore for Backend {
                 table = preset,
             );
 
-            self.session.query(qry, (file_id.as_bytes().to_vec(),)).await?;
+            self.session
+                .query(qry, (file_id.as_bytes().to_vec(),))
+                .await?;
         }
 
         Ok(())

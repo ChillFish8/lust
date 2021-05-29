@@ -42,17 +42,13 @@ pub async fn get_file(mut state: State) -> HandlerResult {
     let img = if let Some(cached) = cache.get(file_id, preset.clone(), format) {
         debug!(
             "using cached version of image for file_id: {}, preset: {}, format: {:?}",
-            file_id,
-            &preset,
-            format,
+            file_id, &preset, format,
         );
         Some(cached)
     } else {
         debug!(
             "using backend version of image for file_id: {}, preset: {}, format: {:?}",
-            file_id,
-            &preset,
-            format,
+            file_id, &preset, format,
         );
         if let Some(data) = get_image(&mut state, file_id, preset.clone(), format).await {
             cache.set(file_id, preset, format, data.clone());
@@ -96,7 +92,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
                         "message": format!("encountered exception: {:?}", e)
                     })),
                 ),
-            ))
+            ));
         }
     };
 
@@ -147,7 +143,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
                         "message": format!("failed to process image: {:?}", e),
                     })),
                 ),
-            ))
+            ));
         }
     };
 
@@ -162,7 +158,10 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
     let params = ImageRemove::take_from(&mut state);
 
     if let Err(e) = delete_image(&mut state, params.file_id).await {
-        error!("failed delete image with id: {}, error; {:?}", params.file_id, &e);
+        error!(
+            "failed delete image with id: {}, error; {:?}",
+            params.file_id, &e
+        );
         return Ok((
             state,
             json_response(
