@@ -5,3 +5,4 @@
 /database.db
 /database.db-shm
 /database.db-wal
+/tests/backend_runners/scylla/storage/
