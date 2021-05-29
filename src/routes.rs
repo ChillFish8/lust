@@ -7,6 +7,7 @@ use gotham::hyper::http::StatusCode;
 use gotham::hyper::{body, Body};
 use gotham::state::{FromState, State};
 
+use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
 use crate::context::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::image::{delete_image, get_image, process_new_image};
@@ -36,7 +37,17 @@ pub async fn get_file(mut state: State) -> HandlerResult {
         }
     }
 
-    let img = get_image(&mut state, file_id, preset, format).await;
+    let cache = CACHE_STATE.get().expect("not initialised");
+    let img = if let Some(cached) = cache.get(file_id, preset.clone(), format) {
+        Some(cached)
+    } else {
+        if let Some(data) = get_image(&mut state, file_id, preset.clone(), format).await {
+            cache.set(file_id, preset, format, data.clone());
+            Some(data)
+        } else {
+            None
+        }
+    };
 
     match img {
         None => Ok((state, empty_response(StatusCode::NOT_FOUND))),
