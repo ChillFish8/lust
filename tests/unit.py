@@ -18,8 +18,10 @@ def test_png_upload1():
         "data": data,
     }
 
-    r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
-    pprint(r.json())
+    for _ in range(5000):
+        r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
+        pprint(r.json())
+    print("done!")
 
 
 def test_get_img1():
