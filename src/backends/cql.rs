@@ -1,12 +1,10 @@
-use scylla::cql_to_rust::FromRow;
-use scylla::macros::FromRow;
-use scylla::transport::session::{IntoTypedRows, Session};
+use scylla::transport::session::Session;
 use scylla::SessionBuilder;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
-use log::warn;
+use log::{warn, info, debug};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
@@ -50,8 +48,6 @@ macro_rules! log_and_convert_error {
 }
 
 
-
-
 /// A cassandra database backend.
 pub struct Backend {
     session: CurrentSession,
@@ -59,21 +55,25 @@ pub struct Backend {
 
 impl Backend {
     pub async fn connect(cfg: DatabaseConfig) -> Result<Self> {
+        info!("connecting to database");
         let session = SessionBuilder::new()
             .user(cfg.user, cfg.password)
             .known_nodes(cfg.clusters.as_ref())
             .build()
             .await?;
+        info!("connect successful");
 
         let create_ks = format!(
             r#"
         CREATE KEYSPACE IF NOT EXISTS lust_ks WITH REPLICATION  = {{
-            'class': {:?}, 'replication_factor': {}
+            'class': '{}', 'replication_factor': {}
         }};"#,
             &cfg.replication_class, cfg.replication_factor
         );
+        debug!("creating keyspace {}", &create_ks);
 
         let _ = session.query(create_ks, &[]).await?;
+        info!("keyspace ensured");
 
         Ok(Self { session })
     }
@@ -82,6 +82,7 @@ impl Backend {
 #[async_trait]
 impl DatabaseLinker for Backend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+        info!("CQL building tables");
         let mut columns = vec![format!("file_id uuid PRIMARY KEY")];
 
         for format in formats {
@@ -91,13 +92,14 @@ impl DatabaseLinker for Backend {
 
         for preset in presets {
             let query = format!(
-                "CREATE TABLE IF NOT EXISTS {table} ({columns})",
+                "CREATE TABLE IF NOT EXISTS lust_ks.{table} ({columns})",
                 table = preset,
                 columns = columns.join(", ")
             );
 
             self.session.query(query, &[]).await?;
         }
+        info!("CQL tables created");
 
         Ok(())
     }
@@ -113,7 +115,7 @@ impl ImageStore for Backend {
     ) -> Option<BytesMut> {
         let column = to_variant_name(&format).expect("unreachable");
         let qry = format!(
-            "SELECT {column} FROM {table} WHERE file_id = ? LIMIT 1;",
+            "SELECT {column} FROM lust_ks.{table} WHERE file_id = ? LIMIT 1;",
             column = column,
             table = preset,
         );
