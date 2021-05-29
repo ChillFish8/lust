@@ -1,7 +1,8 @@
 import base64
 import requests
 import uuid
-from pprint import pprint
+from time import perf_counter
+from _thread import start_new_thread
 
 
 def get_base_data(file: str) -> str:
@@ -17,11 +18,8 @@ def test_png_upload1():
         "format": "png",
         "data": data,
     }
-
-    for _ in range(5000):
-        r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
-        pprint(r.json())
-    print("done!")
+    r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
+    assert r.status_code == 200
 
 
 def test_get_img1():
