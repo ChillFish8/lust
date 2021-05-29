@@ -27,6 +27,12 @@ Lust makes use of a Least Recently Used in-memory cache which can be adjusted fo
 The larger the number the more images it will cache at once and vice versa. 
 *NOTE: With bigger images this can create much higher RAM usage*
 
+## Scaling
+Lust's ability to scale is purely down to the backend you use, something like SQLite will obviously suffer at any sort of scale and is meant only really for development purposes. Personally I recommend PostgreSQL (leading to vertical scaling storage) or Scylla (Horzontally scaling storage) depending on your needs.
+If you want a very small amount of cached images then Postgres will out perform Scylla considerably at random reads however, Scylla is far more suites to large scaling and distributed system as well as large amounts of writes.
+
+Performance of each database generally doesn't matter too much due to the processing time of each image being more than the IO latency when adding images and the cache supporting reads, that being said if you have alot of random inconsistent reads PostgreSQL will likely be the best, or if you want large distributed scaling Scylla will allow you to scale horozontally.
+
 ## Formats
 Lust supports any of the following formats: 
 - Png
