@@ -1,7 +1,7 @@
 import base64
 import requests
 import uuid
-import _thread
+from pprint import pprint
 
 
 def get_base_data(file: str) -> str:
@@ -18,8 +18,8 @@ def test_png_upload1():
         "data": data,
     }
 
-    requests.post("http://127.0.0.1:7070/admin/create", json=payload)
-    print("done")
+    r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
+    pprint(r.json())
 
 
 def test_get_img1():

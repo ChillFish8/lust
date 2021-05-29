@@ -1,6 +1,5 @@
 use base64::{decode, encode};
-use flate2::read::GzDecoder;
-use std::io::Read;
+use log::{debug, error};
 
 use gotham::handler::HandlerResult;
 use gotham::hyper::http::StatusCode;
@@ -14,6 +13,8 @@ use crate::image::{delete_image, get_image, process_new_image};
 use crate::response::{empty_response, image_response, json_response};
 use crate::PathExtractor;
 
+/// Gets a given image from the storage backend with the given
+/// preset and format if it does not already exist in cache.
 pub async fn get_file(mut state: State) -> HandlerResult {
     let path_vars = PathExtractor::take_from(&mut state);
     let params = ImageGet::take_from(&mut state);
@@ -39,8 +40,20 @@ pub async fn get_file(mut state: State) -> HandlerResult {
 
     let cache = CACHE_STATE.get().expect("not initialised");
     let img = if let Some(cached) = cache.get(file_id, preset.clone(), format) {
+        debug!(
+            "using cached version of image for file_id: {}, preset: {}, format: {:?}",
+            file_id,
+            &preset,
+            format,
+        );
         Some(cached)
     } else {
+        debug!(
+            "using backend version of image for file_id: {}, preset: {}, format: {:?}",
+            file_id,
+            &preset,
+            format,
+        );
         if let Some(data) = get_image(&mut state, file_id, preset.clone(), format).await {
             cache.set(file_id, preset, format, data.clone());
             Some(data)
@@ -74,6 +87,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
     let bod = match res {
         Ok(bod) => bod,
         Err(e) => {
+            error!("failed to read data from body {:?}", &e);
             return Ok((
                 state,
                 json_response(
@@ -106,8 +120,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
     };
 
     let format = upload.format;
-    let compressed = upload.compressed.unwrap_or_else(|| false);
-    let mut data = match decode(upload.data) {
+    let data = match decode(upload.data) {
         Ok(d) => d,
         Err(_) => {
             return Ok((
@@ -122,27 +135,10 @@ pub async fn add_file(mut state: State) -> HandlerResult {
         }
     };
 
-    if compressed {
-        let mut decoder = GzDecoder::new(&data[..]);
-        let mut out = Vec::with_capacity(data.len());
-        if let Err(e) = decoder.read_to_end(&mut out) {
-            return Ok((
-                state,
-                json_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Some(json!({
-                        "message": format!("failed to decompress data: {:?}", e),
-                    })),
-                ),
-            ));
-        }
-
-        data = out;
-    }
-
     let (file_id, formats) = match process_new_image(&mut state, format, data).await {
         Ok(v) => v,
         Err(e) => {
+            error!("failed process new image {:?}", &e);
             return Ok((
                 state,
                 json_response(
@@ -166,6 +162,7 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
     let params = ImageRemove::take_from(&mut state);
 
     if let Err(e) = delete_image(&mut state, params.file_id).await {
+        error!("failed delete image with id: {}, error; {:?}", params.file_id, &e);
         return Ok((
             state,
             json_response(

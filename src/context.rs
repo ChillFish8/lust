@@ -11,7 +11,7 @@ pub type ImagePresetsData = HashMap<String, ImageData>;
 pub type ImageDataSizes = HashMap<ImageFormat, usize>;
 pub type ImagePresetDataSizes = HashMap<String, ImageDataSizes>;
 
-#[derive(Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Copy)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
     Png,
@@ -31,7 +31,6 @@ pub struct ImageGet {
 pub struct ImageUpload {
     pub format: ImageFormat,
     pub data: String,
-    pub compressed: Option<bool>,
 }
 
 #[derive(Serialize)]
