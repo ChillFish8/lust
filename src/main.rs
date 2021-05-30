@@ -31,7 +31,7 @@ use uuid::Uuid;
 
 use crate::configure::StateConfig;
 use crate::context::{ImageFormat, ImageGet, ImageRemove};
-use crate::storage::{Backend, DatabaseBackend, StorageBackend};
+use crate::storage::{StorageBackend, DatabaseBackend};
 use crate::traits::DatabaseLinker;
 
 /// A regex string for validating uuids in the request path.
@@ -121,26 +121,26 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
         ));
     }?;
 
-    let backend: storage::StorageBackend = match cfg.database_backend.clone() {
+    let backend: StorageBackend = match cfg.database_backend.clone() {
         DatabaseBackend::Cassandra(db_cfg) => {
             let db = backends::cql::Backend::connect(db_cfg).await?;
             let _ = storage::CASSANDRA.set(db);
-            StorageBackend::with_backend(Backend::Cassandra)
+            StorageBackend::Cassandra
         }
         DatabaseBackend::Postgres(db_cfg) => {
             let db = backends::sql::PostgresBackend::connect(db_cfg).await?;
             let _ = storage::POSTGRES.set(db);
-            StorageBackend::with_backend(Backend::Postgres)
+            StorageBackend::Postgres
         }
         DatabaseBackend::MySQL(db_cfg) => {
             let db = backends::sql::MySQLBackend::connect(db_cfg).await?;
             let _ = storage::MYSQL.set(db);
-            StorageBackend::with_backend(Backend::MySQL)
+            StorageBackend::MySQL
         }
         DatabaseBackend::Sqlite(db_cfg) => {
             let db = backends::sql::SqliteBackend::connect(db_cfg).await?;
             let _ = storage::SQLITE.set(db);
-            StorageBackend::with_backend(Backend::Sqlite)
+            StorageBackend::Sqlite
         }
     };
 

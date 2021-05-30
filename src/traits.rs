@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use bytes::BytesMut;
 use uuid::Uuid;
 
-use crate::context::{ImageFormat, ImagePresetsData};
+use crate::context::{ImageFormat, ImagePresetsData, FilterType, OrderBy, IndexResult};
 
 #[async_trait]
 pub trait DatabaseLinker {
@@ -22,4 +22,10 @@ pub trait ImageStore {
     async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()>;
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()>;
+
+    async fn add_category(&self, category: &str) -> Result<()>;
+
+    async fn remove_category(&self, category: &str) -> Result<()>;
+
+    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>>;
 }

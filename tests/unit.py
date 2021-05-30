@@ -1,8 +1,6 @@
 import base64
 import requests
 import uuid
-from time import perf_counter
-from _thread import start_new_thread
 
 
 def get_base_data(file: str) -> str:

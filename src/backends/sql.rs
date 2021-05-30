@@ -10,7 +10,7 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 
-use crate::context::{ImageFormat, ImagePresetsData};
+use crate::context::{ImageFormat, ImagePresetsData, OrderBy, FilterType, IndexResult};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 /// The configuration for the SQL based database backends.
@@ -204,6 +204,18 @@ impl ImageStore for PostgresBackend {
 
         Ok(())
     }
+
+    async fn add_category(&self, category: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn remove_category(&self, category: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+        unimplemented!()
+    }
 }
 
 /// A database backend set to handle the MySQL / MariaDB database.
@@ -284,6 +296,18 @@ impl ImageStore for MySQLBackend {
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         delete_file!(file_id, &presets, "?", &self.pool);
         Ok(())
+    }
+
+    async fn add_category(&self, category: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn remove_category(&self, category: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+        unimplemented!()
     }
 }
 
@@ -377,5 +401,17 @@ impl ImageStore for SqliteBackend {
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         delete_file!(file_id, &presets, "?", &self.pool);
         Ok(())
+    }
+
+    async fn add_category(&self, category: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn remove_category(&self, category: &str) -> Result<()> {
+        unimplemented!()
+    }
+
+    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+        unimplemented!()
     }
 }

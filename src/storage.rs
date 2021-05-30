@@ -7,7 +7,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::backends;
-use crate::context::{ImageFormat, ImagePresetsData};
+use crate::context::{ImageFormat, ImagePresetsData, OrderBy, FilterType, IndexResult};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 // The bellow definitions are a hack, this is due to
@@ -31,8 +31,8 @@ macro_rules! acquire {
     }};
 }
 
-#[derive(Copy, Clone)]
-pub enum Backend {
+#[derive(Copy, Clone, StateData)]
+pub enum StorageBackend {
     Cassandra,
     Postgres,
     MySQL,
@@ -40,7 +40,7 @@ pub enum Backend {
 }
 
 #[async_trait]
-impl DatabaseLinker for Backend {
+impl DatabaseLinker for StorageBackend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
         match self {
             Self::Cassandra => acquire!(CASSANDRA).ensure_tables(presets, formats).await,
@@ -52,7 +52,7 @@ impl DatabaseLinker for Backend {
 }
 
 #[async_trait]
-impl ImageStore for Backend {
+impl ImageStore for StorageBackend {
     async fn get_image(
         &self,
         file_id: Uuid,
@@ -84,40 +84,31 @@ impl ImageStore for Backend {
             Self::Sqlite => acquire!(SQLITE).remove_image(file_id, presets).await,
         }
     }
-}
 
-#[derive(Copy, Clone, StateData)]
-pub struct StorageBackend(Backend);
-
-impl StorageBackend {
-    pub fn with_backend(backend: Backend) -> Self {
-        Self { 0: backend }
-    }
-}
-
-#[async_trait]
-impl DatabaseLinker for StorageBackend {
-    async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
-        self.0.ensure_tables(presets, formats).await
-    }
-}
-
-#[async_trait]
-impl ImageStore for StorageBackend {
-    async fn get_image(
-        &self,
-        file_id: Uuid,
-        preset: String,
-        format: ImageFormat,
-    ) -> Option<BytesMut> {
-        self.0.get_image(file_id, preset, format).await
+    async fn add_category(&self, category: &str) -> Result<()> {
+        match self {
+            Self::Cassandra => acquire!(CASSANDRA).add_category(category).await,
+            Self::Postgres => acquire!(POSTGRES).add_category(category).await,
+            Self::MySQL => acquire!(MYSQL).add_category(category).await,
+            Self::Sqlite => acquire!(SQLITE).add_category(category).await,
+        }
     }
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
-        self.0.add_image(file_id, data).await
+    async fn remove_category(&self, category: &str) -> Result<()> {
+        match self {
+            Self::Cassandra => acquire!(CASSANDRA).remove_category(category).await,
+            Self::Postgres => acquire!(POSTGRES).remove_category(category).await,
+            Self::MySQL => acquire!(MYSQL).remove_category(category).await,
+            Self::Sqlite => acquire!(SQLITE).remove_category(category).await,
+        }
     }
 
-    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-        self.0.remove_image(file_id, presets).await
+    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+        match self {
+            Self::Cassandra => acquire!(CASSANDRA).list_entities(filter, order, page).await,
+            Self::Postgres => acquire!(POSTGRES).list_entities(filter, order, page).await,
+            Self::MySQL => acquire!(MYSQL).list_entities(filter, order, page).await,
+            Self::Sqlite => acquire!(SQLITE).list_entities(filter, order, page).await,
+        }
     }
 }

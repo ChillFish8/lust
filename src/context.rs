@@ -1,6 +1,7 @@
 use bytes::BytesMut;
 use hashbrown::HashMap;
 use uuid::Uuid;
+use std::time::SystemTime;
 
 use gotham_derive::{StateData, StaticResponseExtender};
 use serde::{Deserialize, Serialize};
@@ -42,4 +43,43 @@ pub struct ImageUploaded {
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 pub struct ImageRemove {
     pub file_id: Uuid,
+}
+
+/// A set of filters that can be used to view
+/// entities via the REST API on the admin panel.
+///
+/// Example:
+///
+/// ```json
+/// {
+///     "filter": {
+///         "filter_type": "category",
+///         "with_value": "cats",
+///     }
+/// }
+/// ```
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase", tag = "filter_type", content = "with_value")]
+pub enum FilterType {
+    All,
+    Category(String),
+    CreationDate(SystemTime)
+}
+
+
+/// How the data should be ordered when requesting the
+/// index list.
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum OrderBy {
+    CreationDate,
+    TotalSize,
+}
+
+/// A result when listing all items in the server.
+#[derive(Serialize)]
+pub struct IndexResult {
+    file_id: Uuid,
+    total_size: usize,
+    created_on: SystemTime,
 }
