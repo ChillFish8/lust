@@ -9,8 +9,8 @@ use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
 
+use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
-use crate::context::{OrderBy, FilterType, IndexResult};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 /// Represents a connection pool session with a round robbin load balancer.

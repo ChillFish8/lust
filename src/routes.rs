@@ -8,9 +8,9 @@ use gotham::state::{FromState, State};
 
 use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
-use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
+use crate::context::{CategoryPayload, FilesListPayload};
 use crate::image::{delete_image, get_image, process_new_image};
-use crate::context::{FilesListPayload, CategoryPayload};
+use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::response::{empty_response, image_response, json_response};
 use crate::PathExtractor;
 
@@ -134,7 +134,6 @@ pub async fn get_file(mut state: State) -> HandlerResult {
         }
     }
 }
-
 
 /// Handles a POST request for adding a image to the store.
 ///
@@ -266,4 +265,3 @@ pub async fn remove_category(mut state: State) -> HandlerResult {
 
     unimplemented!()
 }
-

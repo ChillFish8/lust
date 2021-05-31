@@ -71,15 +71,15 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .to_async(routes::get_file);
 
         route
-            .get(&format!("{}/:category:{}/:file_id:{}", base, CATEGORY_REGEX, UUID_REGEX))
+            .get(&format!(
+                "{}/:category:{}/:file_id:{}",
+                base, CATEGORY_REGEX, UUID_REGEX
+            ))
             .with_path_extractor::<PathExtractor>()
             .with_query_string_extractor::<ImageGet>()
             .to_async(routes::get_file);
 
-        route
-            .post("admin/create/file")
-            .to_async(routes::add_file);
-
+        route.post("admin/create/file").to_async(routes::add_file);
 
         route
             .post("admin/create/category")
@@ -91,12 +91,13 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .to_async(routes::remove_file);
 
         route
-            .post(&format!("admin/delete/category/:category:{}", CATEGORY_REGEX))
+            .post(&format!(
+                "admin/delete/category/:category:{}",
+                CATEGORY_REGEX
+            ))
             .to_async(routes::remove_category);
 
-        route
-            .post("admin/list")
-            .to_async(routes::list_files);
+        route.post("admin/list").to_async(routes::list_files);
     }))
 }
 

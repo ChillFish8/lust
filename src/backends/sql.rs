@@ -10,9 +10,8 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 
-
+use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
-use crate::context::{OrderBy, FilterType, IndexResult};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 /// The configuration for the SQL based database backends.

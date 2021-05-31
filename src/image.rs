@@ -2,8 +2,8 @@ use anyhow::Result;
 use bytes::{BufMut, BytesMut};
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
-use serde::{Serialize, Deserialize};
 use hashbrown::HashMap;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webp::Encoder;
 

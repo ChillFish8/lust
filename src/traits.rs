@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use bytes::BytesMut;
 use uuid::Uuid;
 
-use crate::image::{ImageFormat, ImagePresetsData};
 use crate::context::{FilterType, IndexResult, OrderBy};
+use crate::image::{ImageFormat, ImagePresetsData};
 
 #[async_trait]
 pub trait DatabaseLinker {

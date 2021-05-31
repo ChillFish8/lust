@@ -7,8 +7,8 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::backends;
-use crate::image::{ImageFormat, ImagePresetsData};
 use crate::context::{FilterType, IndexResult, OrderBy};
+use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 // The bellow definitions are a hack, this is due to
@@ -118,4 +118,3 @@ impl ImageStore for StorageBackend {
         }
     }
 }
-

@@ -3,7 +3,6 @@ use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 
-
 /// A set of filters that can be used to view
 /// entities via the REST API on the admin panel.
 ///
@@ -41,7 +40,6 @@ pub struct IndexResult {
     total_size: usize,
     created_on: SystemTime,
 }
-
 
 #[derive(Deserialize)]
 pub struct FilesListPayload {
