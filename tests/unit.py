@@ -16,12 +16,13 @@ def test_png_upload1():
         "format": "png",
         "data": data,
     }
-    r = requests.post("http://127.0.0.1:7070/admin/create", json=payload)
+    r = requests.post("http://127.0.0.1:7070/admin/create/file", json=payload)
+    print(r.json())
     assert r.status_code == 200
 
 
 def test_get_img1():
-    r = requests.get(f"http://127.0.0.1:7070/images/7db542f9-9bee-4311-be5c-f68bd5e7a7e7")
+    r = requests.get(f"http://127.0.0.1:7070/images/c4f33387-792d-4a59-a91a-eb86a000dbc2")
     assert r.status_code == 200
 
 

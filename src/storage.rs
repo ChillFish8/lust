@@ -7,7 +7,7 @@ use serde::Deserialize;
 use uuid::Uuid;
 
 use crate::backends;
-use crate::context::{ImageFormat, ImagePresetsData, OrderBy, FilterType, IndexResult};
+use crate::context::{FilterType, ImageFormat, ImagePresetsData, IndexResult, OrderBy};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 // The bellow definitions are a hack, this is due to
@@ -103,7 +103,12 @@ impl ImageStore for StorageBackend {
         }
     }
 
-    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+    async fn list_entities(
+        &self,
+        filter: FilterType,
+        order: OrderBy,
+        page: usize,
+    ) -> Result<Vec<IndexResult>> {
         match self {
             Self::Cassandra => acquire!(CASSANDRA).list_entities(filter, order, page).await,
             Self::Postgres => acquire!(POSTGRES).list_entities(filter, order, page).await,
@@ -112,3 +117,4 @@ impl ImageStore for StorageBackend {
         }
     }
 }
+

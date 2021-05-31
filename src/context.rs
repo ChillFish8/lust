@@ -1,7 +1,7 @@
 use bytes::BytesMut;
 use hashbrown::HashMap;
-use uuid::Uuid;
 use std::time::SystemTime;
+use uuid::Uuid;
 
 use gotham_derive::{StateData, StaticResponseExtender};
 use serde::{Deserialize, Serialize};
@@ -63,9 +63,8 @@ pub struct ImageRemove {
 pub enum FilterType {
     All,
     Category(String),
-    CreationDate(SystemTime)
+    CreationDate(SystemTime),
 }
-
 
 /// How the data should be ordered when requesting the
 /// index list.

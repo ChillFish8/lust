@@ -31,17 +31,21 @@ use uuid::Uuid;
 
 use crate::configure::StateConfig;
 use crate::context::{ImageFormat, ImageGet, ImageRemove};
-use crate::storage::{StorageBackend, DatabaseBackend};
+use crate::storage::{DatabaseBackend, StorageBackend};
 use crate::traits::DatabaseLinker;
 
 /// A regex string for validating uuids in the request path.
 static UUID_REGEX: &str =
-    "^[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}$";
+    "[0-9a-fA-F]{8}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{4}\\b-[0-9a-fA-F]{12}$";
+
+/// A regex for separating out the category sections
+static CATEGORY_REGEX: &str = "[a-zA-Z0-9]+";
 
 /// A simple extractor for taking the file_id out of the path
 /// of the request as a UUID.
 #[derive(Deserialize, StateData, StaticResponseExtender)]
 struct PathExtractor {
+    category: Option<String>,
     file_id: Uuid,
 }
 
@@ -61,15 +65,23 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
 
     Ok(build_router(chain, pipelines, |route| {
         route
-            .get(&format!("{}/:file_id:{}", base, UUID_REGEX,))
+            .get(&format!("{}/:file_id:{}", base, UUID_REGEX))
             .with_path_extractor::<PathExtractor>()
             .with_query_string_extractor::<ImageGet>()
             .to_async(routes::get_file);
 
-        route.post("admin/create").to_async(routes::add_file);
+        route
+            .get(&format!("{}/:category:{}/:file_id:{}", base, CATEGORY_REGEX, UUID_REGEX))
+            .with_path_extractor::<PathExtractor>()
+            .with_query_string_extractor::<ImageGet>()
+            .to_async(routes::get_file);
 
         route
-            .delete(&format!("admin/delete/:file_id:{}", UUID_REGEX))
+            .post("admin/create/file")
+            .to_async(routes::add_file);
+
+        route
+            .delete(&format!("admin/delete/file/:file_id:{}", UUID_REGEX))
             .with_path_extractor::<ImageRemove>()
             .to_async(routes::remove_file);
     }))

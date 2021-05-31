@@ -10,7 +10,7 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 
-use crate::context::{ImageFormat, ImagePresetsData, OrderBy, FilterType, IndexResult};
+use crate::context::{FilterType, ImageFormat, ImagePresetsData, IndexResult, OrderBy};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 /// The configuration for the SQL based database backends.
@@ -213,7 +213,12 @@ impl ImageStore for PostgresBackend {
         unimplemented!()
     }
 
-    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+    async fn list_entities(
+        &self,
+        filter: FilterType,
+        order: OrderBy,
+        page: usize,
+    ) -> Result<Vec<IndexResult>> {
         unimplemented!()
     }
 }
@@ -306,7 +311,12 @@ impl ImageStore for MySQLBackend {
         unimplemented!()
     }
 
-    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+    async fn list_entities(
+        &self,
+        filter: FilterType,
+        order: OrderBy,
+        page: usize,
+    ) -> Result<Vec<IndexResult>> {
         unimplemented!()
     }
 }
@@ -411,7 +421,12 @@ impl ImageStore for SqliteBackend {
         unimplemented!()
     }
 
-    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+    async fn list_entities(
+        &self,
+        filter: FilterType,
+        order: OrderBy,
+        page: usize,
+    ) -> Result<Vec<IndexResult>> {
         unimplemented!()
     }
 }

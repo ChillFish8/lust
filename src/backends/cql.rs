@@ -9,7 +9,7 @@ use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
 
-use crate::context::{ImageFormat, ImagePresetsData, OrderBy, FilterType, IndexResult};
+use crate::context::{FilterType, ImageFormat, ImagePresetsData, IndexResult, OrderBy};
 use crate::traits::{DatabaseLinker, ImageStore};
 
 /// Represents a connection pool session with a round robbin load balancer.
@@ -185,7 +185,12 @@ impl ImageStore for Backend {
         unimplemented!()
     }
 
-    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+    async fn list_entities(
+        &self,
+        filter: FilterType,
+        order: OrderBy,
+        page: usize,
+    ) -> Result<Vec<IndexResult>> {
         unimplemented!()
     }
 }
