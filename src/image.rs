@@ -1,6 +1,8 @@
 use anyhow::Result;
 use bytes::{BufMut, BytesMut};
 use gotham::state::{FromState, State};
+use gotham_derive::{StateData, StaticResponseExtender};
+use serde::{Serialize, Deserialize};
 use hashbrown::HashMap;
 use uuid::Uuid;
 use webp::Encoder;
@@ -9,9 +11,47 @@ use image::imageops;
 use image::{load_from_memory_with_format, DynamicImage};
 
 use crate::configure::StateConfig;
-use crate::context::{ImageData, ImageDataSizes, ImageFormat, ImagePresetDataSizes};
 use crate::storage::StorageBackend;
 use crate::traits::ImageStore;
+
+pub type ImageData = HashMap<ImageFormat, BytesMut>;
+pub type ImagePresetsData = HashMap<String, ImageData>;
+
+pub type ImageDataSizes = HashMap<ImageFormat, usize>;
+pub type ImagePresetDataSizes = HashMap<String, ImageDataSizes>;
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum ImageFormat {
+    Png,
+    Jpeg,
+    Gif,
+    WebP,
+}
+
+#[derive(Deserialize, StateData, StaticResponseExtender)]
+pub struct ImageGet {
+    pub format: Option<ImageFormat>,
+    pub encode: Option<bool>,
+    pub preset: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct ImageUpload {
+    pub format: ImageFormat,
+    pub data: String,
+}
+
+#[derive(Serialize)]
+pub struct ImageUploaded {
+    pub file_id: Uuid,
+    pub formats: ImagePresetDataSizes,
+}
+
+#[derive(Deserialize, StateData, StaticResponseExtender)]
+pub struct ImageRemove {
+    pub file_id: Uuid,
+}
 
 macro_rules! convert {
     ( $e:expr, $d:expr ) => {{

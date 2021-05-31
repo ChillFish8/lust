@@ -30,7 +30,7 @@ use tokio::fs;
 use uuid::Uuid;
 
 use crate::configure::StateConfig;
-use crate::context::{ImageFormat, ImageGet, ImageRemove};
+use crate::image::{ImageFormat, ImageGet, ImageRemove};
 use crate::storage::{DatabaseBackend, StorageBackend};
 use crate::traits::DatabaseLinker;
 
@@ -91,8 +91,12 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .to_async(routes::remove_file);
 
         route
-            .post("admin/delete/category")
-            .to_async(routes::add_category);
+            .post(&format!("admin/delete/category/:category:{}", CATEGORY_REGEX))
+            .to_async(routes::remove_category);
+
+        route
+            .post("admin/list")
+            .to_async(routes::list_files);
     }))
 }
 

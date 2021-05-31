@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::context::ImageFormat;
+use crate::image::ImageFormat;
 
 /// The key that acts as the hashed key.
 pub type CacheKey = (Uuid, String, ImageFormat);

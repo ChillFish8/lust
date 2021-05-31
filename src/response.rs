@@ -7,7 +7,7 @@ use headers::HeaderMapExt;
 use bytes::BytesMut;
 use serde_json::Value;
 
-use crate::context::ImageFormat;
+use crate::image::ImageFormat;
 
 /// A standard JSON response with the content type set to application/json
 pub fn json_response(status: StatusCode, data: Option<Value>) -> Response<Body> {

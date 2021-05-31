@@ -5,7 +5,7 @@ use gotham_derive::StateData;
 use hashbrown::HashMap;
 use serde::Deserialize;
 
-use crate::context::ImageFormat;
+use crate::image::ImageFormat;
 use crate::storage::DatabaseBackend;
 
 /// A cheaply cloneable version of the given configuration

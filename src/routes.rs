@@ -8,10 +8,51 @@ use gotham::state::{FromState, State};
 
 use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
-use crate::context::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
+use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::image::{delete_image, get_image, process_new_image};
+use crate::context::{FilesListPayload, CategoryPayload};
 use crate::response::{empty_response, image_response, json_response};
 use crate::PathExtractor;
+
+macro_rules! from_body {
+    ( $e:expr ) => {{
+        let res = body::to_bytes(Body::take_from(&mut $e)).await;
+        let bod = match res {
+            Ok(bod) => bod,
+            Err(e) => {
+                error!("failed to read data from body {:?}", &e);
+                return Ok((
+                    $e,
+                    json_response(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Some(json!({
+                            "message": format!("encountered exception: {:?}", e)
+                        })),
+                    ),
+                ));
+            }
+        };
+
+        match serde_json::from_slice(bod.as_ref()) {
+            Ok(v) => v,
+            Err(e) => {
+                return Ok((
+                    $e,
+                    json_response(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        Some(json!({
+                            "message":
+                                format!(
+                                    "failed to deserialize POST body due to the following error: {:?}",
+                                    e
+                                )
+                        })),
+                    ),
+                ))
+            }
+        }
+    }};
+}
 
 /// Gets a given image from the storage backend with the given
 /// preset and format if it does not already exist in cache.
@@ -108,41 +149,7 @@ pub async fn get_file(mut state: State) -> HandlerResult {
 /// }
 /// ```
 pub async fn add_file(mut state: State) -> HandlerResult {
-    let res = body::to_bytes(Body::take_from(&mut state)).await;
-    let bod = match res {
-        Ok(bod) => bod,
-        Err(e) => {
-            error!("failed to read data from body {:?}", &e);
-            return Ok((
-                state,
-                json_response(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Some(json!({
-                        "message": format!("encountered exception: {:?}", e)
-                    })),
-                ),
-            ));
-        }
-    };
-
-    let upload: ImageUpload = match serde_json::from_slice(bod.as_ref()) {
-        Ok(v) => v,
-        Err(e) => {
-            return Ok((
-                state,
-                json_response(
-                    StatusCode::UNPROCESSABLE_ENTITY,
-                    Some(json!({
-                        "message":
-                            format!(
-                                "failed to deserialize POST body due to the following error: {:?}",
-                                e
-                            )
-                    })),
-                ),
-            ))
-        }
-    };
+    let upload: ImageUpload = from_body!(state);
 
     let format = upload.format;
     let data = match decode(upload.data) {
@@ -242,10 +249,21 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
     ))
 }
 
+pub async fn list_files(mut state: State) -> HandlerResult {
+    let payload: FilesListPayload = from_body!(state);
+
+    unimplemented!()
+}
+
 pub async fn add_category(mut state: State) -> HandlerResult {
+    let payload: CategoryPayload = from_body!(state);
+
     unimplemented!()
 }
 
 pub async fn remove_category(mut state: State) -> HandlerResult {
+    let payload: CategoryPayload = from_body!(state);
+
     unimplemented!()
 }
+
