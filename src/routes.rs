@@ -15,6 +15,22 @@ use crate::PathExtractor;
 
 /// Gets a given image from the storage backend with the given
 /// preset and format if it does not already exist in cache.
+///
+/// This endpoint can return any of the following status codes:
+///
+/// 404:
+///     The image does not exist, NOTE: This endpoint will **always**
+///     return a 404 if an unexpected error was encountered rather than
+///     raising an error to the requester, instead it will be logged in
+///     the console.
+///
+/// 200:
+///     The image was successfully fetched and sent as the response.
+///
+/// TODO:
+///     Likely performance issues could become apparent at higher
+///     concurrency due to the Mutex on the LRU cache, although this
+///     is probably insignificant compared to the time spent on IO.
 pub async fn get_file(mut state: State) -> HandlerResult {
     let path_vars = PathExtractor::take_from(&mut state);
     let params = ImageGet::take_from(&mut state);
@@ -78,6 +94,19 @@ pub async fn get_file(mut state: State) -> HandlerResult {
     }
 }
 
+
+/// Handles a POST request for adding a image to the store.
+///
+/// The image payload must be in JSON format and be base64 encoded in
+/// the standard specification.
+///
+/// E.g.
+/// ```json
+/// {
+///     "format": "png",
+///     "data": "...data ensues..."
+/// }
+/// ```
 pub async fn add_file(mut state: State) -> HandlerResult {
     let res = body::to_bytes(Body::take_from(&mut state)).await;
     let bod = match res {
@@ -154,6 +183,30 @@ pub async fn add_file(mut state: State) -> HandlerResult {
     Ok((state, json_response(StatusCode::OK, Some(resp))))
 }
 
+/// Handles removing a image from the store.
+///
+/// This removes the image from both the database backend and
+/// the cache if it exists in there.
+///
+/// This only requires the UUID of the image no other information
+/// is needed.
+///
+/// Note on semantics:
+///     This endpoint does not check if the image exists or not,
+///     it simply tries to remove it if it exists otherwise ignores it.
+///
+///     For that reason this will always return 200 if no exceptions
+///     happened at the time.
+///
+/// This endpoint can return any of the following responses:
+///
+/// 500:
+///     The server could not complete the request due to a unexpected
+///     exception, this is typically only possible via the transaction
+///     on the database backend failing.
+///
+/// 200:
+///     The image has been removed successfully.
 pub async fn remove_file(mut state: State) -> HandlerResult {
     let params = ImageRemove::take_from(&mut state);
 
@@ -187,4 +240,12 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
             })),
         ),
     ))
+}
+
+pub async fn add_category(mut state: State) -> HandlerResult {
+    unimplemented!()
+}
+
+pub async fn remove_category(mut state: State) -> HandlerResult {
+    unimplemented!()
 }

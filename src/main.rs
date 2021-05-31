@@ -80,10 +80,19 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .post("admin/create/file")
             .to_async(routes::add_file);
 
+
+        route
+            .post("admin/create/category")
+            .to_async(routes::add_category);
+
         route
             .delete(&format!("admin/delete/file/:file_id:{}", UUID_REGEX))
             .with_path_extractor::<ImageRemove>()
             .to_async(routes::remove_file);
+
+        route
+            .post("admin/delete/category")
+            .to_async(routes::add_category);
     }))
 }
 
