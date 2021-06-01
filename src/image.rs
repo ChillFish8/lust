@@ -40,6 +40,7 @@ pub struct ImageGet {
 pub struct ImageUpload {
     pub format: ImageFormat,
     pub data: String,
+    pub category: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -116,6 +117,7 @@ fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, Imag
 
 pub async fn process_new_image(
     state: &mut State,
+    category: &str,
     format: ImageFormat,
     data: Vec<u8>,
 ) -> Result<(Uuid, ImagePresetDataSizes)> {
@@ -154,7 +156,7 @@ pub async fn process_new_image(
     }
 
     let file_id = Uuid::new_v4();
-    storage.add_image(file_id, converted_data).await?;
+    storage.add_image(file_id, category, converted_data).await?;
 
     Ok((file_id, converted_sizes))
 }
@@ -163,10 +165,11 @@ pub async fn get_image(
     state: &mut State,
     file_id: Uuid,
     preset: String,
+    category: &str,
     format: ImageFormat,
 ) -> Option<BytesMut> {
     let storage = StorageBackend::take_from(state);
-    storage.get_image(file_id, preset, format).await
+    storage.get_image(file_id, preset, category, format).await
 }
 
 pub async fn delete_image(state: &mut State, file_id: Uuid) -> Result<()> {

@@ -17,16 +17,13 @@ pub trait ImageStore {
         &self,
         file_id: Uuid,
         preset: String,
+        category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut>;
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()>;
+    async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()>;
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()>;
-
-    async fn add_category(&self, category: &str) -> Result<()>;
-
-    async fn remove_category(&self, category: &str) -> Result<()>;
 
     async fn list_entities(
         &self,

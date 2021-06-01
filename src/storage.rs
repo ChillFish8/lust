@@ -58,22 +58,39 @@ impl ImageStore for StorageBackend {
         &self,
         file_id: Uuid,
         preset: String,
+        category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut> {
         match self {
-            Self::Cassandra => acquire!(CASSANDRA).get_image(file_id, preset, format).await,
-            Self::Postgres => acquire!(POSTGRES).get_image(file_id, preset, format).await,
-            Self::MySQL => acquire!(MYSQL).get_image(file_id, preset, format).await,
-            Self::Sqlite => acquire!(SQLITE).get_image(file_id, preset, format).await,
+            Self::Cassandra => {
+                acquire!(CASSANDRA)
+                    .get_image(file_id, preset, category, format)
+                    .await
+            }
+            Self::Postgres => {
+                acquire!(POSTGRES)
+                    .get_image(file_id, preset, category, format)
+                    .await
+            }
+            Self::MySQL => {
+                acquire!(MYSQL)
+                    .get_image(file_id, preset, category, format)
+                    .await
+            }
+            Self::Sqlite => {
+                acquire!(SQLITE)
+                    .get_image(file_id, preset, category, format)
+                    .await
+            }
         }
     }
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
+    async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
         match self {
-            Self::Cassandra => acquire!(CASSANDRA).add_image(file_id, data).await,
-            Self::Postgres => acquire!(POSTGRES).add_image(file_id, data).await,
-            Self::MySQL => acquire!(MYSQL).add_image(file_id, data).await,
-            Self::Sqlite => acquire!(SQLITE).add_image(file_id, data).await,
+            Self::Cassandra => acquire!(CASSANDRA).add_image(file_id, category, data).await,
+            Self::Postgres => acquire!(POSTGRES).add_image(file_id, category, data).await,
+            Self::MySQL => acquire!(MYSQL).add_image(file_id, category, data).await,
+            Self::Sqlite => acquire!(SQLITE).add_image(file_id, category, data).await,
         }
     }
 
@@ -83,24 +100,6 @@ impl ImageStore for StorageBackend {
             Self::Postgres => acquire!(POSTGRES).remove_image(file_id, presets).await,
             Self::MySQL => acquire!(MYSQL).remove_image(file_id, presets).await,
             Self::Sqlite => acquire!(SQLITE).remove_image(file_id, presets).await,
-        }
-    }
-
-    async fn add_category(&self, category: &str) -> Result<()> {
-        match self {
-            Self::Cassandra => acquire!(CASSANDRA).add_category(category).await,
-            Self::Postgres => acquire!(POSTGRES).add_category(category).await,
-            Self::MySQL => acquire!(MYSQL).add_category(category).await,
-            Self::Sqlite => acquire!(SQLITE).add_category(category).await,
-        }
-    }
-
-    async fn remove_category(&self, category: &str) -> Result<()> {
-        match self {
-            Self::Cassandra => acquire!(CASSANDRA).remove_category(category).await,
-            Self::Postgres => acquire!(POSTGRES).remove_category(category).await,
-            Self::MySQL => acquire!(MYSQL).remove_category(category).await,
-            Self::Sqlite => acquire!(SQLITE).remove_category(category).await,
         }
     }
 

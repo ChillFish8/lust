@@ -8,10 +8,12 @@ use gotham::state::{FromState, State};
 
 use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
-use crate::context::{CategoryPayload, FilesListPayload};
+use crate::context::FilesListPayload;
 use crate::image::{delete_image, get_image, process_new_image};
 use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::response::{empty_response, image_response, json_response};
+use crate::storage::StorageBackend;
+use crate::traits::ImageStore;
 use crate::PathExtractor;
 
 macro_rules! from_body {
@@ -78,6 +80,7 @@ pub async fn get_file(mut state: State) -> HandlerResult {
     let config = StateConfig::take_from(&mut state);
 
     let file_id = path_vars.file_id;
+    let category = path_vars.category.unwrap_or_else(|| "default".to_string());
     let format = params
         .format
         .unwrap_or_else(|| config.0.default_serving_format.clone());
@@ -107,7 +110,8 @@ pub async fn get_file(mut state: State) -> HandlerResult {
             "using backend version of image for file_id: {}, preset: {}, format: {:?}",
             file_id, &preset, format,
         );
-        if let Some(data) = get_image(&mut state, file_id, preset.clone(), format).await {
+        if let Some(data) = get_image(&mut state, file_id, preset.clone(), &category, format).await
+        {
             cache.set(file_id, preset, format, data.clone());
             Some(data)
         } else {
@@ -166,7 +170,9 @@ pub async fn add_file(mut state: State) -> HandlerResult {
         }
     };
 
-    let (file_id, formats) = match process_new_image(&mut state, format, data).await {
+    let category = upload.category.unwrap_or_else(|| "default".to_string());
+
+    let (file_id, formats) = match process_new_image(&mut state, &category, format, data).await {
         Ok(v) => v,
         Err(e) => {
             error!("failed process new image {:?}", &e);
@@ -250,18 +256,13 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
 
 pub async fn list_files(mut state: State) -> HandlerResult {
     let payload: FilesListPayload = from_body!(state);
+    let storage = StorageBackend::take_from(&mut state);
 
-    unimplemented!()
-}
+    let filter = payload.filter;
+    let sort = payload.order;
+    let page = payload.page.unwrap_or(1);
 
-pub async fn add_category(mut state: State) -> HandlerResult {
-    let payload: CategoryPayload = from_body!(state);
-
-    unimplemented!()
-}
-
-pub async fn remove_category(mut state: State) -> HandlerResult {
-    let payload: CategoryPayload = from_body!(state);
+    let res = storage.list_entities(filter, sort, page).await;
 
     unimplemented!()
 }

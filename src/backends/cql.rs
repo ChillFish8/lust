@@ -4,6 +4,7 @@ use scylla::SessionBuilder;
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
+use chrono::Utc;
 use log::{debug, info, warn};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
@@ -82,8 +83,19 @@ impl Backend {
 #[async_trait]
 impl DatabaseLinker for Backend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
-        info!("CQL building tables");
-        let mut columns = vec![format!("file_id uuid PRIMARY KEY")];
+        info!("building tables");
+        let query = r#"
+        CREATE TABLE IF NOT EXISTS lust_ks.image_metadata (
+            file_id UUID PRIMARY KEY,
+            category TEXT,
+            insert_date TIMESTAMP,
+            total_size INTEGER
+        );"#;
+
+        self.session.query(query, &[]).await?;
+        info!("metadata table created successfully");
+
+        let mut columns = vec![format!("file_id UUID PRIMARY KEY")];
 
         for format in formats {
             let column = to_variant_name(&format).expect("unreachable");
@@ -98,8 +110,10 @@ impl DatabaseLinker for Backend {
             );
 
             self.session.query(query, &[]).await?;
+
+            debug!("created preset table {}", preset);
         }
-        info!("CQL tables created");
+        info!("tables created");
 
         Ok(())
     }
@@ -111,8 +125,20 @@ impl ImageStore for Backend {
         &self,
         file_id: Uuid,
         preset: String,
+        category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut> {
+        let qry = r#"
+        SELECT 1 FROM lust_ks.image_metadata
+        WHERE file_id = ? AND category = ?;
+        "#;
+        let prepared = log_and_convert_error!(self.session.prepare(qry,).await)?;
+
+        let query_result =
+            log_and_convert_error!(self.session.execute(&prepared, (file_id,)).await)?;
+
+        let _ = query_result.rows?;
+
         let column = to_variant_name(&format).expect("unreachable");
         let qry = format!(
             "SELECT {column} FROM lust_ks.{table} WHERE file_id = ? LIMIT 1;",
@@ -132,8 +158,12 @@ impl ImageStore for Backend {
         Some(BytesMut::from(ref_))
     }
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
+    async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
+        let mut total: i64 = 0;
         for (preset, preset_data) in data {
+            let sum: i64 = preset_data.values().map(|v| v.len() as i64).sum();
+            total += sum;
+
             let columns: String = preset_data
                 .keys()
                 .map(|v| to_variant_name(v).expect("unreachable"))
@@ -160,6 +190,19 @@ impl ImageStore for Backend {
             self.session.execute(&prepared, values).await?;
         }
 
+        let qry = r#"
+        INSERT INTO lust_ks.image_metadata (
+            file_id,
+            category,
+            insert_date,
+            total_size
+        ) VALUES (?, ?, ?, ?);"#;
+
+        let now = Utc::now();
+
+        self.session
+            .query(qry, (file_id, category, now.to_string(), total))
+            .await?;
         Ok(())
     }
 
@@ -175,15 +218,10 @@ impl ImageStore for Backend {
                 .await?;
         }
 
+        let qry = "DELETE FROM lust_ks.image_metadata WHERE file_id = ?;";
+
+        self.session.query(qry, (file_id,)).await?;
         Ok(())
-    }
-
-    async fn add_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
-    }
-
-    async fn remove_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
     }
 
     async fn list_entities(

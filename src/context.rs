@@ -1,4 +1,5 @@
-use std::time::SystemTime;
+use chrono::DateTime;
+use chrono::Utc;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,7 @@ use serde::{Deserialize, Serialize};
 pub enum FilterType {
     All,
     Category(String),
-    CreationDate(SystemTime),
+    CreationDate(DateTime<Utc>),
 }
 
 /// How the data should be ordered when requesting the
@@ -38,16 +39,12 @@ pub enum OrderBy {
 pub struct IndexResult {
     file_id: Uuid,
     total_size: usize,
-    created_on: SystemTime,
+    created_on: DateTime<Utc>,
 }
 
 #[derive(Deserialize)]
 pub struct FilesListPayload {
     pub filter: FilterType,
     pub order: OrderBy,
-}
-
-#[derive(Deserialize)]
-pub struct CategoryPayload {
-    pub name: String,
+    pub page: Option<usize>,
 }

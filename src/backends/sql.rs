@@ -1,6 +1,8 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
+use chrono::Utc;
+use log::{debug, info};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
 use uuid::Uuid;
@@ -122,6 +124,67 @@ macro_rules! delete_file {
             let query = sqlx::query(&qry).bind(&file_id);
             query.execute($pool).await?;
         }
+
+        let qry = format!(
+            "DELETE FROM image_metadata WHERE file_id = {}",
+            $placeholder,
+        );
+
+        let query = sqlx::query(&qry).bind($id.to_string());
+        query.execute($pool).await?;
+    }};
+}
+
+/// Inserts a given file_id into the index table.
+///
+/// This table mostly acts as the metadata table for listing files of
+/// given categories.
+macro_rules! insert_metadata {
+    ( $file_id:expr, $category:expr, $total:expr, $placeholder:expr, $pool:expr, ) => {{
+        let placeholders: String = (0..4).map($placeholder).collect::<Vec<String>>().join(", ");
+
+        let qry = format!(
+            r#"
+        INSERT INTO image_metadata (
+            file_id,
+            category,
+            insert_date,
+            total_size
+        ) VALUES ({placeholders})"#,
+            placeholders = placeholders,
+        );
+
+        let now = Utc::now();
+
+        let query = sqlx::query(&qry)
+            .bind($file_id)
+            .bind($category)
+            .bind(now)
+            .bind($total);
+        query.execute($pool).await?;
+    }};
+}
+
+macro_rules! sum_total {
+    ( $total:expr, $values:expr ) => {{
+        let sum: i64 = $values.values().map(|v| v.len() as i64).sum();
+        $total += sum;
+    }};
+}
+
+macro_rules! check_category {
+    ( $file_id:expr, $category:expr, $ph1:expr, $ph2:expr, $pool:expr ) => {{
+        let qry = format!(
+            "SELECT 1 FROM image_metadata WHERE file_id = {} AND category = {};",
+            $ph1, $ph2,
+        );
+
+        sqlx::query(&qry)
+            .bind($file_id.to_string())
+            .bind($category)
+            .fetch_optional($pool)
+            .await
+            .unwrap_or(None)
     }};
 }
 
@@ -149,6 +212,20 @@ impl PostgresBackend {
 #[async_trait]
 impl DatabaseLinker for PostgresBackend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+        info!("building tables");
+
+        let query = sqlx::query(
+            r#"
+        CREATE TABLE IF NOT EXISTS image_metadata (
+            file_id CHAR(36) PRIMARY KEY,
+            category TEXT,
+            insert_date TIMESTAMP,
+            total_size INTEGER
+        )"#,
+        );
+
+        query.execute(&self.pool).await?;
+
         let mut columns = vec![format!("file_id CHAR(36) PRIMARY KEY")];
 
         for format in formats {
@@ -178,8 +255,11 @@ impl ImageStore for PostgresBackend {
         &self,
         file_id: Uuid,
         preset: String,
+        category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut> {
+        check_category!(file_id, category, "$1", "$2", &self.pool)?;
+
         let column = to_variant_name(&format).expect("unreachable");
 
         let qry = build_select_qry(column, &preset, "$1");
@@ -188,14 +268,24 @@ impl ImageStore for PostgresBackend {
         extract_or_none!(qry.fetch_one(&self.pool).await, column)
     }
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
+    async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
+        let mut total: i64 = 0;
         for (preset, preset_data) in data {
+            sum_total!(total, preset_data);
             let (qry, values) = build_insert!(&preset, preset_data, |i| format!("${}", i));
 
             let values_ = values.iter().map(|v| v.as_ref());
             let query = query_with_parameters!(file_id.to_string(), &qry, values_);
             query.execute(&self.pool).await?;
         }
+
+        insert_metadata!(
+            file_id.to_string(),
+            category,
+            total,
+            |i| format!("${}", i),
+            &self.pool,
+        );
 
         Ok(())
     }
@@ -204,14 +294,6 @@ impl ImageStore for PostgresBackend {
         delete_file!(file_id, &presets, "$1", &self.pool);
 
         Ok(())
-    }
-
-    async fn add_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
-    }
-
-    async fn remove_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
     }
 
     async fn list_entities(
@@ -248,6 +330,20 @@ impl MySQLBackend {
 #[async_trait]
 impl DatabaseLinker for MySQLBackend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+        info!("building tables");
+
+        let query = sqlx::query(
+            r#"
+        CREATE TABLE IF NOT EXISTS image_metadata (
+            file_id CHAR(36) PRIMARY KEY,
+            category TEXT,
+            insert_date TIMESTAMP,
+            total_size INTEGER
+        )"#,
+        );
+
+        query.execute(&self.pool).await?;
+
         let mut columns = vec![format!("file_id CHAR(36) PRIMARY KEY")];
 
         for format in formats {
@@ -277,8 +373,11 @@ impl ImageStore for MySQLBackend {
         &self,
         file_id: Uuid,
         preset: String,
+        category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut> {
+        check_category!(file_id, category, "?", "?", &self.pool)?;
+
         let column = to_variant_name(&format).expect("unreachable");
 
         let qry = build_select_qry(column, &preset, "?");
@@ -287,8 +386,10 @@ impl ImageStore for MySQLBackend {
         extract_or_none!(query.fetch_one(&self.pool).await, column)
     }
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
+    async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
+        let mut total: i64 = 0;
         for (preset, preset_data) in data {
+            sum_total!(total, preset_data);
             let (qry, values) = build_insert!(&preset, preset_data, |_| "?".to_string());
 
             let values_ = values.iter().map(|v| v.as_ref());
@@ -296,20 +397,20 @@ impl ImageStore for MySQLBackend {
             query.execute(&self.pool).await?;
         }
 
+        insert_metadata!(
+            file_id.to_string(),
+            category,
+            total,
+            |_| "?".to_string(),
+            &self.pool,
+        );
+
         Ok(())
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         delete_file!(file_id, &presets, "?", &self.pool);
         Ok(())
-    }
-
-    async fn add_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
-    }
-
-    async fn remove_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
     }
 
     async fn list_entities(
@@ -351,6 +452,8 @@ impl SqliteBackend {
             .connect(&cfg.connection_uri)
             .await?;
 
+        info!("successfully connected to sqlite");
+
         Ok(Self { pool })
     }
 }
@@ -358,6 +461,21 @@ impl SqliteBackend {
 #[async_trait]
 impl DatabaseLinker for SqliteBackend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+        info!("building tables");
+
+        let query = sqlx::query(
+            "
+        CREATE TABLE IF NOT EXISTS image_metadata (
+            file_id CHAR(36) PRIMARY KEY,
+            category TEXT,
+            insert_date TEXT,
+            total_size INTEGER
+        )",
+        );
+
+        query.execute(&self.pool).await?;
+        info!("metadata table created successfully");
+
         let mut columns = vec![format!("file_id CHAR(36) PRIMARY KEY")];
 
         for format in formats {
@@ -375,7 +493,10 @@ impl DatabaseLinker for SqliteBackend {
             let query = sqlx::query(&qry);
 
             query.execute(&self.pool).await?;
+
+            debug!("created preset table {}", preset);
         }
+        info!("all preset tables created successfully");
 
         Ok(())
     }
@@ -387,8 +508,11 @@ impl ImageStore for SqliteBackend {
         &self,
         file_id: Uuid,
         preset: String,
+        category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut> {
+        check_category!(file_id, category, "?", "?", &self.pool)?;
+
         let column = to_variant_name(&format).expect("unreachable");
 
         let qry = build_select_qry(column, &preset, "?");
@@ -397,8 +521,11 @@ impl ImageStore for SqliteBackend {
         extract_or_none!(query.fetch_one(&self.pool).await, column)
     }
 
-    async fn add_image(&self, file_id: Uuid, data: ImagePresetsData) -> Result<()> {
+    async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
+        let mut total: i64 = 0;
         for (preset, preset_data) in data {
+            sum_total!(total, preset_data);
+
             let (qry, values) = build_insert!(&preset, preset_data, |_| "?".to_string());
 
             let values_ = values.iter().map(|v| v.as_ref());
@@ -406,20 +533,20 @@ impl ImageStore for SqliteBackend {
             query.execute(&self.pool).await?;
         }
 
+        insert_metadata!(
+            file_id.to_string(),
+            category,
+            total,
+            |_| "?".to_string(),
+            &self.pool,
+        );
+
         Ok(())
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
         delete_file!(file_id, &presets, "?", &self.pool);
         Ok(())
-    }
-
-    async fn add_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
-    }
-
-    async fn remove_category(&self, category: &str) -> Result<()> {
-        unimplemented!()
     }
 
     async fn list_entities(
