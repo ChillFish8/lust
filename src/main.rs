@@ -94,7 +94,7 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
 #[tokio::main]
 async fn main() -> Result<()> {
     SimpleLogger::new()
-        .with_level(LevelFilter::Info)
+        .with_level(LevelFilter::Off)
         .with_module_level("lust", LevelFilter::Info)
         .with_module_level("gotham", LevelFilter::Info)
         .init()
