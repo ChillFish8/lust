@@ -85,8 +85,7 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .with_path_extractor::<ImageRemove>()
             .to_async(routes::remove_file);
 
-        route.post("admin/list")
-            .to_async(routes::list_files);
+        route.post("admin/list").to_async(routes::list_files);
     }))
 }
 

@@ -8,7 +8,7 @@ use gotham::state::{FromState, State};
 
 use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
-use crate::context::{FilesListPayload, OrderBy, FilterType};
+use crate::context::{FilesListPayload, FilterType, OrderBy};
 use crate::image::{delete_image, get_image, process_new_image};
 use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::response::{empty_response, image_response, json_response};
@@ -80,8 +80,7 @@ pub async fn get_file(mut state: State) -> HandlerResult {
     let config = StateConfig::take_from(&mut state);
 
     let file_id = path_vars.file_id;
-    let category = path_vars.category
-        .unwrap_or_else(|| "default".to_string());
+    let category = path_vars.category.unwrap_or_else(|| "default".to_string());
 
     let format = params
         .format
@@ -190,7 +189,11 @@ pub async fn add_file(mut state: State) -> HandlerResult {
         }
     };
 
-    let resp = ImageUploaded { file_id, formats, category };
+    let resp = ImageUploaded {
+        file_id,
+        formats,
+        category,
+    };
 
     let resp = serde_json::to_value(resp).expect("failed to serialize uploaded stats");
 
@@ -280,11 +283,10 @@ pub async fn list_files(mut state: State) -> HandlerResult {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Some(json!({
-                "message": format!(
-                    "failed to fetch results for page due to error: {:?}", e)
+                    "message": format!("failed to fetch results for page due to error: {:?}", e)
                 })),
             )
-        },
+        }
     };
 
     Ok((state, json_response(status, payload)))

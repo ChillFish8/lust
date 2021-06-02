@@ -13,11 +13,10 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
 
+use crate::configure::PAGE_SIZE;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
-use crate::configure::PAGE_SIZE;
-
 
 /// The configuration for the SQL based database backends.
 ///
@@ -195,12 +194,10 @@ macro_rules! apply_filter {
     ( $qry:expr, $placeholder:expr, $filter:expr ) => {{
         match $filter {
             FilterType::All => (),
-            FilterType::Category(_) => {
-                $qry = format!("{} WHERE category = {}", $qry, $placeholder)
-            },
+            FilterType::Category(_) => $qry = format!("{} WHERE category = {}", $qry, $placeholder),
             FilterType::CreationDate(_) => {
                 $qry = format!("{} WHERE insert_date = {}", $qry, $placeholder)
-            },
+            }
         };
     }};
 }
@@ -209,12 +206,8 @@ macro_rules! bind_filter {
     ( $query:expr, $filter:expr ) => {{
         match $filter {
             FilterType::All => (),
-            FilterType::Category(v) => {
-                $query = $query.bind(v)
-            },
-            FilterType::CreationDate(v) => {
-                $query = $query.bind(v)
-            },
+            FilterType::Category(v) => $query = $query.bind(v),
+            FilterType::CreationDate(v) => $query = $query.bind(v),
         };
     }};
 }
@@ -224,8 +217,7 @@ macro_rules! from_rows {
         $rows
             .drain(..)
             .map(|v| IndexResult {
-                file_id: Uuid::from_str(v.get("file_id"))
-                    .expect("uuid was invalid in database"),
+                file_id: Uuid::from_str(v.get("file_id")).expect("uuid was invalid in database"),
                 category: v.get("category"),
                 total_size: v.get("total_size"),
                 created_on: v.get("insert_date"),
@@ -352,19 +344,20 @@ impl ImageStore for PostgresBackend {
         let skip = PAGE_SIZE * page as i64 - 1;
         let order = order.as_str();
 
-        let mut qry = format!(r#"
+        let mut qry = format!(
+            r#"
             SELECT (file_id, category, insert_date, total_size)
             FROM image_metadata
             OFFSET $1
             LIMIT $2
             ORDER BY {}
-            "#, order);
+            "#,
+            order
+        );
 
         apply_filter!(qry, "$3", &filter);
 
-        let mut query = sqlx::query(&qry)
-            .bind(skip)
-            .bind(PAGE_SIZE);
+        let mut query = sqlx::query(&qry).bind(skip).bind(PAGE_SIZE);
 
         bind_filter!(query, filter);
 
@@ -492,18 +485,19 @@ impl ImageStore for MySQLBackend {
         let skip = PAGE_SIZE * page as i64 - 1;
         let order = order.as_str();
 
-        let mut qry = format!(r#"
+        let mut qry = format!(
+            r#"
             SELECT (file_id, category, insert_date, total_size)
             FROM image_metadata
             LIMIT ?, ?
             ORDER BY {}
-            "#, order);
+            "#,
+            order
+        );
 
         apply_filter!(qry, "?", &filter);
 
-        let mut query = sqlx::query(&qry)
-            .bind(skip)
-            .bind(PAGE_SIZE);
+        let mut query = sqlx::query(&qry).bind(skip).bind(PAGE_SIZE);
 
         bind_filter!(query, filter);
 
@@ -653,18 +647,19 @@ impl ImageStore for SqliteBackend {
             OrderBy::TotalSize => "total_size",
         };
 
-        let mut qry = format!(r#"
+        let mut qry = format!(
+            r#"
             SELECT file_id, category, insert_date, total_size
             FROM image_metadata
             ORDER BY {} DESC
             LIMIT ?, ?;
-            "#, order);
+            "#,
+            order
+        );
 
         apply_filter!(qry, "?", &filter);
 
-        let mut query = sqlx::query(&qry)
-            .bind(skip)
-            .bind(PAGE_SIZE);
+        let mut query = sqlx::query(&qry).bind(skip).bind(PAGE_SIZE);
 
         bind_filter!(query, filter);
 

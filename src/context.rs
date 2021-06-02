@@ -4,7 +4,6 @@ use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
 
-
 /// A set of filters that can be used to view
 /// entities via the REST API on the admin panel.
 ///
@@ -38,12 +37,8 @@ pub enum OrderBy {
 impl OrderBy {
     pub fn as_str(&self) -> &str {
         match self {
-            OrderBy::CreationDate => {
-                "insert_date"
-            },
-            OrderBy::TotalSize => {
-                "total_size"
-            },
+            OrderBy::CreationDate => "insert_date",
+            OrderBy::TotalSize => "total_size",
         }
     }
 }
@@ -63,5 +58,3 @@ pub struct FilesListPayload {
     pub order: Option<OrderBy>,
     pub page: Option<usize>,
 }
-
-

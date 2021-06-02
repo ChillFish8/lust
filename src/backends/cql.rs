@@ -1,27 +1,26 @@
-use scylla::transport::session::Session;
-use scylla::statement::prepared_statement::PreparedStatement;
-use scylla::{SessionBuilder, QueryResult};
 use scylla::query::Query;
+use scylla::statement::prepared_statement::PreparedStatement;
+use scylla::transport::session::Session;
+use scylla::{QueryResult, SessionBuilder};
 
 use anyhow::Result;
 use async_trait::async_trait;
-use bytes::{BytesMut, Bytes};
-use chrono::{Utc, DateTime, NaiveDateTime};
+use bytes::{Bytes, BytesMut};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use log::{debug, info, warn};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use uuid::Uuid;
 
+use crate::configure::PAGE_SIZE;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
-use crate::configure::PAGE_SIZE;
 
 /// Represents a connection pool session with a round robbin load balancer.
 type CurrentSession = Session;
 
 type PagedRow = (Uuid, String, i64, i64);
-
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "strategy", content = "spec")]
@@ -76,27 +75,16 @@ async fn get_page(
     filter: &FilterType,
     session: &CurrentSession,
     stmt: &PreparedStatement,
-    page_state: Option<Bytes>
+    page_state: Option<Bytes>,
 ) -> Result<QueryResult> {
     Ok(match &filter {
-        FilterType::All =>
-            session.execute_paged(
-                stmt,
-                &[],
-                page_state,
-            ).await?,
-        FilterType::CreationDate(v) =>
-            session.execute_paged(
-                stmt,
-                (v.to_string(),),
-                page_state,
-            ).await?,
-        FilterType::Category(v) =>
-            session.execute_paged(
-                stmt,
-                (v,),
-                page_state,
-            ).await?,
+        FilterType::All => session.execute_paged(stmt, &[], page_state).await?,
+        FilterType::CreationDate(v) => {
+            session
+                .execute_paged(stmt, (v.to_string(),), page_state)
+                .await?
+        }
+        FilterType::Category(v) => session.execute_paged(stmt, (v,), page_state).await?,
     })
 }
 
@@ -121,7 +109,7 @@ impl Backend {
                     "'class': 'SimpleStrategy', 'replication_factor': {}",
                     node.replication_factor,
                 )
-            },
+            }
             ReplicationClass::NetworkTopologyStrategy(mut nodes) => {
                 let mut spec = nodes
                     .drain(..)
@@ -299,25 +287,28 @@ impl ImageStore for Backend {
     ) -> Result<Vec<IndexResult>> {
         let order = order.as_str();
 
-        let qry = format!(r#"
+        let qry = format!(
+            r#"
             SELECT file_id, category, insert_date, total_size
             FROM lust_ks.image_metadata
             ORDER BY {} DESC
-            "#, order);
+            "#,
+            order
+        );
 
         let mut query = match &filter {
             FilterType::All => {
                 let qry = format!("{};", qry);
                 Query::new(qry)
-            },
+            }
             FilterType::CreationDate(_) => {
                 let qry = format!("{} WHERE insert_date = ?;", qry);
                 Query::new(qry)
-            },
+            }
             FilterType::Category(_) => {
                 let qry = format!("{} WHERE category = ?;", qry);
                 Query::new(qry)
-            },
+            }
         };
 
         query.set_page_size(PAGE_SIZE as i32);
@@ -325,28 +316,18 @@ impl ImageStore for Backend {
         let mut page_state = None;
 
         for _ in 0..page - 1 {
-            let rows = get_page(
-                &filter,
-                &self.session,
-                &prepared,
-                page_state.clone(),
-            ).await?;
+            let rows = get_page(&filter, &self.session, &prepared, page_state.clone()).await?;
 
             page_state = rows.paging_state;
         }
 
-        let target_rows = get_page(
-            &filter,
-            &self.session,
-            &prepared,
-            page_state.clone(),
-        ).await?;
+        let target_rows = get_page(&filter, &self.session, &prepared, page_state.clone()).await?;
 
         let results = if let Some(mut rows) = target_rows.rows {
-            rows
-                .drain(..)
+            rows.drain(..)
                 .map(|r| {
-                    let r = r.into_typed::<PagedRow>()
+                    let r = r
+                        .into_typed::<PagedRow>()
                         .expect("database format invalidated");
 
                     let res = IndexResult {
