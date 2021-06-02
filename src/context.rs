@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 ///     }
 /// }
 /// ```
-#[derive(Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase", tag = "filter_type", content = "with_value")]
 pub enum FilterType {
     All,
@@ -27,7 +27,7 @@ pub enum FilterType {
 
 /// How the data should be ordered when requesting the
 /// index list.
-#[derive(Deserialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum OrderBy {
     CreationDate,

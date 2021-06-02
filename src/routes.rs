@@ -264,7 +264,24 @@ pub async fn list_files(mut state: State) -> HandlerResult {
     let sort = payload.order;
     let page = payload.page.unwrap_or(1);
 
-    let res = storage.list_entities(filter, sort, page).await;
+    let (status, payload) = match storage.list_entities(filter.clone(), sort, page).await {
+        Ok(results) => (
+            StatusCode::OK,
+            Some(json!({
+                "page": page,
+                "filtered_by": filter,
+                "ordered_by": sort,
+                "results": results,
+            })),
+        ),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Some(json!({
+                "message": format!(
+                    "failed to fetch results for page due to error: {:?}", e)
+            })),
+        ),
+    };
 
-    unimplemented!()
+    Ok((state, json_response(status, payload)))
 }
