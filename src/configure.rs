@@ -57,8 +57,12 @@ impl Config {
                         "ip:port",
                         "ip:port",
                     ],
-                    "replication_factor": 1,
-                    "replication_class": "SimpleStrategy",
+                    "keyspace": {
+                        "strategy": "simplestrategy",
+                        "spec": {
+                            "replication_factor": 3
+                        }
+                    },
                 }
             }),
             "postgres" => json!({
