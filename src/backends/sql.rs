@@ -5,6 +5,7 @@ use chrono::Utc;
 use log::{debug, info};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
+use std::str::FromStr;
 use uuid::Uuid;
 
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
@@ -15,6 +16,8 @@ use sqlx::Row;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
+use crate::configure::PAGE_SIZE;
+
 
 /// The configuration for the SQL based database backends.
 ///
@@ -188,6 +191,49 @@ macro_rules! check_category {
     }};
 }
 
+macro_rules! apply_filter {
+    ( $qry:expr, $placeholder:expr, $filter:expr ) => {{
+        match $filter {
+            FilterType::All => (),
+            FilterType::Category(_) => {
+                $qry = format!("{} WHERE category = {}", $qry, $placeholder)
+            },
+            FilterType::CreationDate(_) => {
+                $qry = format!("{} WHERE insert_date = {}", $qry, $placeholder)
+            },
+        };
+    }};
+}
+
+macro_rules! bind_filter {
+    ( $query:expr, $filter:expr ) => {{
+        match $filter {
+            FilterType::All => (),
+            FilterType::Category(v) => {
+                $query = $query.bind(v)
+            },
+            FilterType::CreationDate(v) => {
+                $query = $query.bind(v)
+            },
+        };
+    }};
+}
+
+macro_rules! from_rows {
+    ( $rows:expr ) => {{
+        $rows
+            .drain(..)
+            .map(|v| IndexResult {
+                file_id: Uuid::from_str(v.get("file_id"))
+                    .expect("uuid was invalid in database"),
+                category: v.get("category"),
+                total_size: v.get("total_size"),
+                created_on: v.get("insert_date"),
+            })
+            .collect()
+    }};
+}
+
 /// A database backend set to handle the PostgreSQL database.
 pub struct PostgresBackend {
     pool: PgPool,
@@ -302,7 +348,30 @@ impl ImageStore for PostgresBackend {
         order: OrderBy,
         page: usize,
     ) -> Result<Vec<IndexResult>> {
-        unimplemented!()
+        // we start at 1 but the offset should be calculated from 0
+        let skip = PAGE_SIZE * page as i64 - 1;
+        let order = order.as_str();
+
+        let mut qry = format!(r#"
+            SELECT (file_id, category, insert_date, total_size)
+            FROM image_metadata
+            OFFSET $1
+            LIMIT $2
+            ORDER BY {}
+            "#, order);
+
+        apply_filter!(qry, "$3", &filter);
+
+        let mut query = sqlx::query(&qry)
+            .bind(skip)
+            .bind(PAGE_SIZE);
+
+        bind_filter!(query, filter);
+
+        let mut rows = query.fetch_all(&self.pool).await?;
+        let results = from_rows!(rows);
+
+        Ok(results)
     }
 }
 
@@ -419,7 +488,29 @@ impl ImageStore for MySQLBackend {
         order: OrderBy,
         page: usize,
     ) -> Result<Vec<IndexResult>> {
-        unimplemented!()
+        // we start at 1 but the offset should be calculated from 0
+        let skip = PAGE_SIZE * page as i64 - 1;
+        let order = order.as_str();
+
+        let mut qry = format!(r#"
+            SELECT (file_id, category, insert_date, total_size)
+            FROM image_metadata
+            LIMIT ?, ?
+            ORDER BY {}
+            "#, order);
+
+        apply_filter!(qry, "?", &filter);
+
+        let mut query = sqlx::query(&qry)
+            .bind(skip)
+            .bind(PAGE_SIZE);
+
+        bind_filter!(query, filter);
+
+        let mut rows = query.fetch_all(&self.pool).await?;
+        let results = from_rows!(rows);
+
+        Ok(results)
     }
 }
 
@@ -555,6 +646,31 @@ impl ImageStore for SqliteBackend {
         order: OrderBy,
         page: usize,
     ) -> Result<Vec<IndexResult>> {
-        unimplemented!()
+        // we start at 1 but the offset should be calculated from 0
+        let skip = PAGE_SIZE * (page as i64 - 1);
+        let order = match order {
+            OrderBy::CreationDate => "datetime(insert_date)",
+            OrderBy::TotalSize => "total_size",
+        };
+
+        let mut qry = format!(r#"
+            SELECT file_id, category, insert_date, total_size
+            FROM image_metadata
+            ORDER BY {} DESC
+            LIMIT ?, ?;
+            "#, order);
+
+        apply_filter!(qry, "?", &filter);
+
+        let mut query = sqlx::query(&qry)
+            .bind(skip)
+            .bind(PAGE_SIZE);
+
+        bind_filter!(query, filter);
+
+        let mut rows = query.fetch_all(&self.pool).await?;
+        let results = from_rows!(rows);
+
+        Ok(results)
     }
 }

@@ -8,6 +8,11 @@ use serde::Deserialize;
 use crate::image::ImageFormat;
 use crate::storage::DatabaseBackend;
 
+
+/// The size of the pages when listing indexes via the admin panel.
+pub const PAGE_SIZE: i64 = 50;
+
+
 /// A cheaply cloneable version of the given configuration
 /// for shared state middleware.
 #[derive(Clone, StateData)]

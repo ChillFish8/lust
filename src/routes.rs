@@ -8,7 +8,7 @@ use gotham::state::{FromState, State};
 
 use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
-use crate::context::FilesListPayload;
+use crate::context::{FilesListPayload, OrderBy, FilterType};
 use crate::image::{delete_image, get_image, process_new_image};
 use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
 use crate::response::{empty_response, image_response, json_response};
@@ -260,9 +260,9 @@ pub async fn list_files(mut state: State) -> HandlerResult {
     let payload: FilesListPayload = from_body!(state);
     let storage = StorageBackend::take_from(&mut state);
 
-    let filter = payload.filter;
-    let sort = payload.order;
-    let page = payload.page.unwrap_or(1);
+    let filter = payload.filter.unwrap_or_else(|| FilterType::All);
+    let sort = payload.order.unwrap_or_else(|| OrderBy::CreationDate);
+    let page = payload.page.unwrap_or_else(|| 1usize);
 
     let (status, payload) = match storage.list_entities(filter.clone(), sort, page).await {
         Ok(results) => (
@@ -274,13 +274,17 @@ pub async fn list_files(mut state: State) -> HandlerResult {
                 "results": results,
             })),
         ),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Some(json!({
+        Err(e) => {
+            error!("failed to fetch results for page due to error: {:?}", &e);
+
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Some(json!({
                 "message": format!(
                     "failed to fetch results for page due to error: {:?}", e)
-            })),
-        ),
+                })),
+            )
+        },
     };
 
     Ok((state, json_response(status, payload)))

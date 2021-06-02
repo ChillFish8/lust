@@ -85,7 +85,8 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .with_path_extractor::<ImageRemove>()
             .to_async(routes::remove_file);
 
-        route.post("admin/list").to_async(routes::list_files);
+        route.post("admin/list")
+            .to_async(routes::list_files);
     }))
 }
 
@@ -94,7 +95,7 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
 #[tokio::main]
 async fn main() -> Result<()> {
     SimpleLogger::new()
-        .with_level(LevelFilter::Off)
+        .with_level(LevelFilter::Info)
         .with_module_level("lust", LevelFilter::Info)
         .with_module_level("gotham", LevelFilter::Info)
         .init()

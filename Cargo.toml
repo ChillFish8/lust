@@ -34,4 +34,4 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 hashbrown = { version = "0.11.2", features = ["serde"] }
 scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main" }
-sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres", "chrono" ] }
+sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres", "chrono", "uuid" ] }

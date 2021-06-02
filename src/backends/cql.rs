@@ -1,5 +1,6 @@
 use scylla::transport::session::Session;
 use scylla::SessionBuilder;
+use scylla::query::Query;
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -13,6 +14,7 @@ use uuid::Uuid;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
+use crate::configure::PAGE_SIZE;
 
 /// Represents a connection pool session with a round robbin load balancer.
 type CurrentSession = Session;
@@ -230,6 +232,36 @@ impl ImageStore for Backend {
         order: OrderBy,
         page: usize,
     ) -> Result<Vec<IndexResult>> {
-        unimplemented!()
+        // we start at 1 but the offset should be calculated from 0
+        let skip = PAGE_SIZE * (page as i64 - 1);
+        let order = order.as_str();
+
+        let qry = format!(r#"
+            SELECT file_id, category, insert_date, total_size
+            FROM lust_ks.image_metadata
+            ORDER BY {} DESC
+            "#, order);
+
+        let mut query = match filter {
+            FilterType::All => {
+                let qry = format!("{};", qry);
+                Query::new(qry)
+            },
+            FilterType::CreationDate(v) => {
+                let qry = format!("{} WHERE insert_date = ?;", qry);
+                Query::new(qry)
+            },
+            FilterType::Category(v) => {
+                let qry = format!("{} WHERE category = ?;", qry);
+                Query::new(qry)
+            },
+        };
+
+        query.set_page_size(PAGE_SIZE as i32);
+
+
+
+
+        Ok(results)
     }
 }
