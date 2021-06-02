@@ -20,7 +20,7 @@ pub type ImagePresetsData = HashMap<String, ImageData>;
 pub type ImageDataSizes = HashMap<ImageFormat, usize>;
 pub type ImagePresetDataSizes = HashMap<String, ImageDataSizes>;
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, Copy)]
+#[derive(Debug, Clone, Ord, PartialOrd, Hash, Eq, PartialEq, Serialize, Deserialize, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
     Png,
