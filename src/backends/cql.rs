@@ -23,7 +23,7 @@ type CurrentSession = Session;
 type PagedRow = (Uuid, String, i64, i64);
 
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", tag = "strategy", content = "spec")]
+#[serde(tag = "strategy", content = "spec")]
 enum ReplicationClass {
     SimpleStrategy(SimpleNode),
     NetworkTopologyStrategy(Vec<DataCenterNode>),

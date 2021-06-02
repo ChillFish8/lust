@@ -56,7 +56,7 @@ impl Config {
                         "ip:port",
                     ],
                     "keyspace": {
-                        "strategy": "simplestrategy",
+                        "strategy": "SimpleStrategy",
                         "spec": {
                             "replication_factor": 3
                         }
