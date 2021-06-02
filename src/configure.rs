@@ -61,6 +61,8 @@ impl Config {
                             "replication_factor": 3
                         }
                     },
+                    "user": "",
+                    "password": "",
                 }
             }),
             "postgres" => json!({
