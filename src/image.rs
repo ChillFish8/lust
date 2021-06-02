@@ -47,6 +47,7 @@ pub struct ImageUpload {
 pub struct ImageUploaded {
     pub file_id: Uuid,
     pub formats: ImagePresetDataSizes,
+    pub category: String,
 }
 
 #[derive(Deserialize, StateData, StaticResponseExtender)]

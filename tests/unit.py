@@ -32,7 +32,7 @@ def test_get_img2():
 
 
 def test_remove_img1():
-    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/file/a3856be9-441d-4f07-9151-85ab1c89e15d")
+    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/file/44524a33-c505-476d-b23b-c42de1fd796a")
     print(r.content)
     assert r.status_code == 200
 

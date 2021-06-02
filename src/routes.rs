@@ -80,7 +80,9 @@ pub async fn get_file(mut state: State) -> HandlerResult {
     let config = StateConfig::take_from(&mut state);
 
     let file_id = path_vars.file_id;
-    let category = path_vars.category.unwrap_or_else(|| "default".to_string());
+    let category = path_vars.category
+        .unwrap_or_else(|| "default".to_string());
+
     let format = params
         .format
         .unwrap_or_else(|| config.0.default_serving_format.clone());
@@ -188,7 +190,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
         }
     };
 
-    let resp = ImageUploaded { file_id, formats };
+    let resp = ImageUploaded { file_id, formats, category };
 
     let resp = serde_json::to_value(resp).expect("failed to serialize uploaded stats");
 
