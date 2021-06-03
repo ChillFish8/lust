@@ -79,9 +79,9 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
             .with_query_string_extractor::<ImageGet>()
             .to_async(routes::get_file);
 
-        route.post("admin/create/file").to_async(routes::add_file);
+        route.post("admin/create/image").to_async(routes::add_file);
         route
-            .delete(&format!("admin/delete/file/:file_id:{}", UUID_REGEX))
+            .delete(&format!("admin/delete/image/:file_id:{}", UUID_REGEX))
             .with_path_extractor::<ImageRemove>()
             .to_async(routes::remove_file);
 

@@ -7,6 +7,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use chrono::{DateTime, NaiveDateTime, Utc};
+use hashbrown::HashMap;
 use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
@@ -16,7 +17,6 @@ use crate::configure::PAGE_SIZE;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
-use hashbrown::HashMap;
 
 /// Represents a connection pool session with a round robbin load balancer.
 type CurrentSession = Session;
@@ -154,7 +154,7 @@ impl DatabaseLinker for Backend {
             insert_date TIMESTAMP,
             total_size BIGINT,
             PRIMARY KEY ((file_id), category)
-        );
+        ) WITH CLUSTERING ORDER BY (category DESC);
         "#;
 
         self.session.query(query, &[]).await?;
@@ -317,18 +317,14 @@ impl ImageStore for Backend {
     async fn list_entities(
         &self,
         filter: FilterType,
-        order: OrderBy,
+        _order: OrderBy,
         page: usize,
     ) -> Result<Vec<IndexResult>> {
-        let order = order.as_str();
-
         let qry = format!(
             r#"
             SELECT file_id, category, insert_date, total_size
             FROM lust_ks.image_metadata
-            ORDER BY {} DESC
             "#,
-            order
         );
 
         let mut query = match &filter {
