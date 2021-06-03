@@ -21,7 +21,7 @@ use crate::traits::{DatabaseLinker, ImageStore};
 /// Represents a connection pool session with a round robbin load balancer.
 type CurrentSession = Session;
 
-type PagedRow = (Uuid, String, i64, i64);
+type PagedRow = (Uuid, String, i64, i32);
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "strategy", content = "spec")]
