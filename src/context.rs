@@ -48,7 +48,7 @@ impl OrderBy {
 pub struct IndexResult {
     pub file_id: Uuid,
     pub category: String,
-    pub total_size: i64,
+    pub total_size: i32,
     pub created_on: DateTime<Utc>,
 }
 

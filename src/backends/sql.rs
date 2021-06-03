@@ -257,7 +257,7 @@ impl DatabaseLinker for PostgresBackend {
         CREATE TABLE IF NOT EXISTS image_metadata (
             file_id CHAR(36) PRIMARY KEY,
             category TEXT,
-            insert_date TIMESTAMP,
+            insert_date TIMESTAMP WITH TIME ZONE,
             total_size INTEGER
         )"#,
         );
@@ -341,16 +341,16 @@ impl ImageStore for PostgresBackend {
         page: usize,
     ) -> Result<Vec<IndexResult>> {
         // we start at 1 but the offset should be calculated from 0
-        let skip = PAGE_SIZE * page as i64 - 1;
+        let skip = PAGE_SIZE * (page as i64 - 1);
         let order = order.as_str();
 
         let mut qry = format!(
             r#"
-            SELECT (file_id, category, insert_date, total_size)
+            SELECT file_id, category, insert_date, total_size
             FROM image_metadata
+            ORDER BY {} DESC
             OFFSET $1
             LIMIT $2
-            ORDER BY {}
             "#,
             order
         );
@@ -482,15 +482,15 @@ impl ImageStore for MySQLBackend {
         page: usize,
     ) -> Result<Vec<IndexResult>> {
         // we start at 1 but the offset should be calculated from 0
-        let skip = PAGE_SIZE * page as i64 - 1;
+        let skip = PAGE_SIZE * (page as i64 - 1);
         let order = order.as_str();
 
         let mut qry = format!(
             r#"
-            SELECT (file_id, category, insert_date, total_size)
+            SELECT file_id, category, insert_date, total_size
             FROM image_metadata
+            ORDER BY {} DESC
             LIMIT ?, ?
-            ORDER BY {}
             "#,
             order
         );
