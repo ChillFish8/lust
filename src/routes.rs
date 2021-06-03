@@ -176,7 +176,6 @@ pub async fn add_file(mut state: State) -> HandlerResult {
     let (file_id, formats) = match process_new_image(&mut state, &category, format, data).await {
         Ok(v) => v,
         Err(e) => {
-            error!("failed process new image {:?}", &e);
             return Ok((
                 state,
                 json_response(
@@ -228,10 +227,6 @@ pub async fn remove_file(mut state: State) -> HandlerResult {
     let params = ImageRemove::take_from(&mut state);
 
     if let Err(e) = delete_image(&mut state, params.file_id).await {
-        error!(
-            "failed delete image with id: {}, error; {:?}",
-            params.file_id, &e
-        );
         return Ok((
             state,
             json_response(
@@ -278,8 +273,6 @@ pub async fn list_files(mut state: State) -> HandlerResult {
             })),
         ),
         Err(e) => {
-            error!("failed to fetch results for page due to error: {:?}", &e);
-
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Some(json!({

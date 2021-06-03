@@ -5,6 +5,7 @@ use gotham_derive::StateData;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use uuid::Uuid;
+use log::error;
 
 use crate::backends;
 use crate::context::{FilterType, IndexResult, OrderBy};
@@ -74,21 +75,33 @@ impl ImageStore for StorageBackend {
     }
 
     async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
-        match self {
+        let res = match self {
             Self::Cassandra => acquire!(CASSANDRA).add_image(file_id, category, data).await,
             Self::Postgres => acquire!(POSTGRES).add_image(file_id, category, data).await,
             Self::MySQL => acquire!(MYSQL).add_image(file_id, category, data).await,
             Self::Sqlite => acquire!(SQLITE).add_image(file_id, category, data).await,
+        };
+
+        if let Err(e) = &res {
+            error!("failed to add image {:?}", e);
         }
+
+        res
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-        match self {
+        let res = match self {
             Self::Cassandra => acquire!(CASSANDRA).remove_image(file_id, presets).await,
             Self::Postgres => acquire!(POSTGRES).remove_image(file_id, presets).await,
             Self::MySQL => acquire!(MYSQL).remove_image(file_id, presets).await,
             Self::Sqlite => acquire!(SQLITE).remove_image(file_id, presets).await,
+        };
+
+        if let Err(e) = &res {
+            error!("failed to remove image {:?}", e);
         }
+
+        res
     }
 
     async fn list_entities(
@@ -97,11 +110,17 @@ impl ImageStore for StorageBackend {
         order: OrderBy,
         page: usize,
     ) -> Result<Vec<IndexResult>> {
-        match self {
+        let res = match self {
             Self::Cassandra => acquire!(CASSANDRA).list_entities(filter, order, page).await,
             Self::Postgres => acquire!(POSTGRES).list_entities(filter, order, page).await,
             Self::MySQL => acquire!(MYSQL).list_entities(filter, order, page).await,
             Self::Sqlite => acquire!(SQLITE).list_entities(filter, order, page).await,
+        };
+
+        if let Err(e) = &res {
+            error!("failed to list images {:?}", e);
         }
+
+        res
     }
 }

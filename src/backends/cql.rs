@@ -102,7 +102,6 @@ impl Backend {
         let session = SessionBuilder::new()
             .user(cfg.user, cfg.password)
             .known_nodes(cfg.clusters.as_ref())
-            .tcp_nodelay(true)
             .build()
             .await?;
         info!("connect successful");
@@ -197,7 +196,7 @@ impl DatabaseLinker for Backend {
                 );
 
                 let prepared = self.session.prepare(qry).await?;
-                info!("prepared check query {:?}", format);
+                debug!("prepared check query {:?}", format);
 
                 if let Some(tbl) = self.get_file.get_mut(preset) {
                     tbl.insert(column.to_string(), prepared);
@@ -219,7 +218,7 @@ impl DatabaseLinker for Backend {
         self.check_cat = Some(prepared);
 
 
-        info!("prepared queries");
+        info!("prepared all queries and tables");
 
 
         Ok(())
