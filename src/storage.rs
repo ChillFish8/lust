@@ -2,10 +2,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use gotham_derive::StateData;
+use log::error;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use uuid::Uuid;
-use log::error;
 
 use crate::backends;
 use crate::context::{FilterType, IndexResult, OrderBy};

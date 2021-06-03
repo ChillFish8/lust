@@ -3,10 +3,10 @@ use bytes::{BufMut, BytesMut};
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
 use hashbrown::HashMap;
+use log::error;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webp::Encoder;
-use log::error;
 
 use image::imageops;
 use image::{load_from_memory_with_format, DynamicImage};
@@ -97,19 +97,28 @@ fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, Imag
     let mut resulting_data = HashMap::with_capacity(4);
 
     if is_enabled!(ImageFormat::Png, cfg.0.formats) {
-        let png: BytesMut = log_err!(convert!(&im, image::ImageFormat::Png), "failed to convert png: ")?;
+        let png: BytesMut = log_err!(
+            convert!(&im, image::ImageFormat::Png),
+            "failed to convert png: "
+        )?;
         resulting_sizes.insert(ImageFormat::Png, png.len());
         resulting_data.insert(ImageFormat::Png, png);
     }
 
     if is_enabled!(ImageFormat::Jpeg, cfg.0.formats) {
-        let jpeg = log_err!(convert!(&im, image::ImageFormat::Jpeg), "failed to convert jpeg: ")?;
+        let jpeg = log_err!(
+            convert!(&im, image::ImageFormat::Jpeg),
+            "failed to convert jpeg: "
+        )?;
         resulting_sizes.insert(ImageFormat::Jpeg, jpeg.len());
         resulting_data.insert(ImageFormat::Jpeg, jpeg);
     }
 
     if is_enabled!(ImageFormat::Gif, cfg.0.formats) {
-        let gif = log_err!(convert!(&im, image::ImageFormat::Gif), "failed to convert gif: ")?;
+        let gif = log_err!(
+            convert!(&im, image::ImageFormat::Gif),
+            "failed to convert gif: "
+        )?;
         resulting_sizes.insert(ImageFormat::Gif, gif.len());
         resulting_data.insert(ImageFormat::Gif, gif);
     }
@@ -147,7 +156,10 @@ pub async fn process_new_image(
     let presets = &cfg.0.size_presets;
     let mut converted_sizes = HashMap::with_capacity(presets.len());
     let mut converted_data = HashMap::with_capacity(presets.len());
-    let original = log_err!(load_from_memory_with_format(&data, fmt), "failed to load format due to exception: ")?;
+    let original = log_err!(
+        load_from_memory_with_format(&data, fmt),
+        "failed to load format due to exception: "
+    )?;
     generate!(
         "original",
         original,

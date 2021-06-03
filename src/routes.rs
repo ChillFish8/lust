@@ -272,14 +272,12 @@ pub async fn list_files(mut state: State) -> HandlerResult {
                 "results": results,
             })),
         ),
-        Err(e) => {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Some(json!({
-                    "message": format!("failed to fetch results for page due to error: {:?}", e)
-                })),
-            )
-        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Some(json!({
+                "message": format!("failed to fetch results for page due to error: {:?}", e)
+            })),
+        ),
     };
 
     Ok((state, json_response(status, payload)))

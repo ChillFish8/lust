@@ -134,7 +134,6 @@ impl Backend {
         let _ = session.query(create_ks, &[]).await?;
         info!("keyspace ensured");
 
-
         Ok(Self {
             session,
             check_cat: None,
@@ -161,7 +160,6 @@ impl DatabaseLinker for Backend {
         self.session.query(query, &[]).await?;
         info!("metadata table created successfully");
 
-
         let query = r#"
         CREATE INDEX IF NOT EXISTS ON lust_ks.image_metadata (category);
         "#;
@@ -176,7 +174,7 @@ impl DatabaseLinker for Backend {
             columns.push(format!("{} BLOB", column))
         }
 
-        for preset in presets{
+        for preset in presets {
             let query = format!(
                 "CREATE TABLE IF NOT EXISTS lust_ks.{table} ({columns})",
                 table = preset,
@@ -206,7 +204,6 @@ impl DatabaseLinker for Backend {
                     self.get_file.insert(preset.to_string(), new_map);
                 }
             }
-
         }
         info!("tables created");
 
@@ -214,12 +211,10 @@ impl DatabaseLinker for Backend {
         SELECT file_id FROM lust_ks.image_metadata
         WHERE file_id = ? AND category = ?;
         "#;
-        let prepared = self.session.prepare(qry,).await?;
+        let prepared = self.session.prepare(qry).await?;
         self.check_cat = Some(prepared);
 
-
         info!("prepared all queries and tables");
-
 
         Ok(())
     }
@@ -235,14 +230,13 @@ impl ImageStore for Backend {
         format: ImageFormat,
     ) -> Option<BytesMut> {
         let prepared = self.check_cat.as_ref().unwrap();
-        let query_result = log_and_convert_error!(self.session.execute(prepared, (file_id, category)).await)?;
+        let query_result =
+            log_and_convert_error!(self.session.execute(prepared, (file_id, category)).await)?;
 
         let _ = query_result.rows?;
 
         let column = to_variant_name(&format).expect("unreachable");
-        let prepared = self.get_file
-            .get(&preset)?
-            .get(column)?;
+        let prepared = self.get_file.get(&preset)?.get(column)?;
 
         let query_result =
             log_and_convert_error!(self.session.execute(prepared, (file_id,)).await)?;
