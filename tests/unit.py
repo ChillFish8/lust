@@ -22,7 +22,7 @@ def test_png_upload1():
 
 
 def test_get_img1():
-    r = requests.get(f"http://127.0.0.1:7070/images/4463d548-9408-4762-a281-04c439db224c")
+    r = requests.get(f"http://127.0.0.1:7070/images/3163ad37-1a36-4e76-9257-4f27c09c6457")
     assert r.status_code == 200
 
 
