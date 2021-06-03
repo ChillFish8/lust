@@ -143,7 +143,7 @@ macro_rules! delete_file {
 /// given categories.
 macro_rules! insert_metadata {
     ( $file_id:expr, $category:expr, $total:expr, $placeholder:expr, $pool:expr, ) => {{
-        let placeholders: String = (0..4).map($placeholder).collect::<Vec<String>>().join(", ");
+        let placeholders: String = (1..5).map($placeholder).collect::<Vec<String>>().join(", ");
 
         let qry = format!(
             r#"
