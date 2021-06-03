@@ -135,29 +135,6 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
         ));
     }?;
 
-    let backend: StorageBackend = match cfg.database_backend.clone() {
-        DatabaseBackend::Cassandra(db_cfg) => {
-            let db = backends::cql::Backend::connect(db_cfg).await?;
-            let _ = storage::CASSANDRA.set(db);
-            StorageBackend::Cassandra
-        }
-        DatabaseBackend::Postgres(db_cfg) => {
-            let db = backends::sql::PostgresBackend::connect(db_cfg).await?;
-            let _ = storage::POSTGRES.set(db);
-            StorageBackend::Postgres
-        }
-        DatabaseBackend::MySQL(db_cfg) => {
-            let db = backends::sql::MySQLBackend::connect(db_cfg).await?;
-            let _ = storage::MYSQL.set(db);
-            StorageBackend::MySQL
-        }
-        DatabaseBackend::Sqlite(db_cfg) => {
-            let db = backends::sql::SqliteBackend::connect(db_cfg).await?;
-            let _ = storage::SQLITE.set(db);
-            StorageBackend::Sqlite
-        }
-    };
-
     let fields: Vec<ImageFormat> = cfg
         .formats
         .iter()
@@ -173,9 +150,34 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
         .collect();
 
     let mut presets: Vec<&str> = cfg.size_presets.keys().map(|v| v.as_str()).collect();
-
     presets.push("original");
-    backend.ensure_tables(presets, fields).await?;
+
+    let backend: StorageBackend = match cfg.database_backend.clone() {
+        DatabaseBackend::Cassandra(db_cfg) => {
+            let mut db = backends::cql::Backend::connect(db_cfg).await?;
+            db.ensure_tables(presets, fields).await?;
+            let _ = storage::CASSANDRA.set(db);
+            StorageBackend::Cassandra
+        }
+        DatabaseBackend::Postgres(db_cfg) => {
+            let mut db = backends::sql::PostgresBackend::connect(db_cfg).await?;
+            db.ensure_tables(presets, fields).await?;
+            let _ = storage::POSTGRES.set(db);
+            StorageBackend::Postgres
+        }
+        DatabaseBackend::MySQL(db_cfg) => {
+            let mut db = backends::sql::MySQLBackend::connect(db_cfg).await?;
+            db.ensure_tables(presets, fields).await?;
+            let _ = storage::MYSQL.set(db);
+            StorageBackend::MySQL
+        }
+        DatabaseBackend::Sqlite(db_cfg) => {
+            let mut db = backends::sql::SqliteBackend::connect(db_cfg).await?;
+            db.ensure_tables(presets, fields).await?;
+            let _ = storage::SQLITE.set(db);
+            StorageBackend::Sqlite
+        }
+    };
 
     let addr: SocketAddr = format!("{}:{}", &cfg.host, cfg.port).parse()?;
     let state_cfg = StateConfig(Arc::new(cfg));

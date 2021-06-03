@@ -16,6 +16,7 @@ use crate::configure::PAGE_SIZE;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
+use hashbrown::HashMap;
 
 /// Represents a connection pool session with a round robbin load balancer.
 type CurrentSession = Session;
@@ -91,6 +92,8 @@ async fn get_page(
 /// A cassandra database backend.
 pub struct Backend {
     session: CurrentSession,
+    check_cat: Option<PreparedStatement>,
+    get_file: HashMap<String, HashMap<String, PreparedStatement>>,
 }
 
 impl Backend {
@@ -132,13 +135,18 @@ impl Backend {
         let _ = session.query(create_ks, &[]).await?;
         info!("keyspace ensured");
 
-        Ok(Self { session })
+
+        Ok(Self {
+            session,
+            check_cat: None,
+            get_file: HashMap::new(),
+        })
     }
 }
 
 #[async_trait]
 impl DatabaseLinker for Backend {
-    async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+    async fn ensure_tables(&mut self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
         info!("building tables");
 
         let query = r#"
@@ -164,12 +172,12 @@ impl DatabaseLinker for Backend {
 
         let mut columns = vec![format!("file_id UUID PRIMARY KEY")];
 
-        for format in formats {
-            let column = to_variant_name(&format).expect("unreachable");
+        for format in formats.iter() {
+            let column = to_variant_name(format).expect("unreachable");
             columns.push(format!("{} BLOB", column))
         }
 
-        for preset in presets {
+        for preset in presets{
             let query = format!(
                 "CREATE TABLE IF NOT EXISTS lust_ks.{table} ({columns})",
                 table = preset,
@@ -177,10 +185,42 @@ impl DatabaseLinker for Backend {
             );
 
             self.session.query(query, &[]).await?;
-
             debug!("created preset table {}", preset);
+
+            for format in formats.iter() {
+                let column = to_variant_name(format).expect("unreachable");
+
+                let qry = format!(
+                    "SELECT {column} FROM lust_ks.{table} WHERE file_id = ? LIMIT 1;",
+                    column = column,
+                    table = preset,
+                );
+
+                let prepared = self.session.prepare(qry).await?;
+                info!("prepared check query {:?}", format);
+
+                if let Some(tbl) = self.get_file.get_mut(preset) {
+                    tbl.insert(column.to_string(), prepared);
+                } else {
+                    let mut new_map = HashMap::new();
+                    new_map.insert(column.to_string(), prepared);
+                    self.get_file.insert(preset.to_string(), new_map);
+                }
+            }
+
         }
         info!("tables created");
+
+        let qry = r#"
+        SELECT file_id FROM lust_ks.image_metadata
+        WHERE file_id = ? AND category = ?;
+        "#;
+        let prepared = self.session.prepare(qry,).await?;
+        self.check_cat = Some(prepared);
+
+
+        info!("prepared queries");
+
 
         Ok(())
     }
@@ -195,28 +235,18 @@ impl ImageStore for Backend {
         category: &str,
         format: ImageFormat,
     ) -> Option<BytesMut> {
-        let qry = r#"
-        SELECT file_id FROM lust_ks.image_metadata
-        WHERE file_id = ? AND category = ?;
-        "#;
-        let prepared = log_and_convert_error!(self.session.prepare(qry,).await)?;
-
-        let query_result =
-            log_and_convert_error!(self.session.execute(&prepared, (file_id, category)).await)?;
+        let prepared = self.check_cat.as_ref().unwrap();
+        let query_result = log_and_convert_error!(self.session.execute(prepared, (file_id, category)).await)?;
 
         let _ = query_result.rows?;
 
         let column = to_variant_name(&format).expect("unreachable");
-        let qry = format!(
-            "SELECT {column} FROM lust_ks.{table} WHERE file_id = ? LIMIT 1;",
-            column = column,
-            table = preset,
-        );
-
-        let prepared = log_and_convert_error!(self.session.prepare(qry,).await)?;
+        let prepared = self.get_file
+            .get(&preset)?
+            .get(column)?;
 
         let query_result =
-            log_and_convert_error!(self.session.execute(&prepared, (file_id,)).await)?;
+            log_and_convert_error!(self.session.execute(prepared, (file_id,)).await)?;
 
         let mut rows = query_result.rows?;
         let row = rows.pop()?;

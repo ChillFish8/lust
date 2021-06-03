@@ -8,7 +8,7 @@ use crate::image::{ImageFormat, ImagePresetsData};
 
 #[async_trait]
 pub trait DatabaseLinker {
-    async fn ensure_tables(&self, presets: Vec<&str>, columns: Vec<ImageFormat>) -> Result<()>;
+    async fn ensure_tables(&mut self, presets: Vec<&str>, columns: Vec<ImageFormat>) -> Result<()>;
 }
 
 #[async_trait]

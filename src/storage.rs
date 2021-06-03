@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::backends;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
-use crate::traits::{DatabaseLinker, ImageStore};
+use crate::traits::ImageStore;
 
 // The bellow definitions are a hack, this is due to
 pub(crate) static CASSANDRA: OnceCell<backends::cql::Backend> = OnceCell::new();
@@ -38,18 +38,6 @@ pub enum StorageBackend {
     Postgres,
     MySQL,
     Sqlite,
-}
-
-#[async_trait]
-impl DatabaseLinker for StorageBackend {
-    async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
-        match self {
-            Self::Cassandra => acquire!(CASSANDRA).ensure_tables(presets, formats).await,
-            Self::Postgres => acquire!(POSTGRES).ensure_tables(presets, formats).await,
-            Self::MySQL => acquire!(MYSQL).ensure_tables(presets, formats).await,
-            Self::Sqlite => acquire!(SQLITE).ensure_tables(presets, formats).await,
-        }
-    }
 }
 
 #[async_trait]

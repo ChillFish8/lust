@@ -249,7 +249,7 @@ impl PostgresBackend {
 
 #[async_trait]
 impl DatabaseLinker for PostgresBackend {
-    async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+    async fn ensure_tables(&mut self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
         info!("building tables");
 
         let query = sqlx::query(
@@ -391,7 +391,7 @@ impl MySQLBackend {
 
 #[async_trait]
 impl DatabaseLinker for MySQLBackend {
-    async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+    async fn ensure_tables(&mut self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
         info!("building tables");
 
         let query = sqlx::query(
@@ -545,7 +545,7 @@ impl SqliteBackend {
 
 #[async_trait]
 impl DatabaseLinker for SqliteBackend {
-    async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
+    async fn ensure_tables(&mut self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
         info!("building tables");
 
         let query = sqlx::query(
