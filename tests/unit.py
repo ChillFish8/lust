@@ -16,8 +16,8 @@ def test_png_upload1():
         "format": "png",
         "data": data,
     }
-    r = requests.post("http://127.0.0.1:7070/admin/create/file", json=payload)
-    print(r.json())
+    r = requests.post("http://127.0.0.1:7070/admin/create/image", json=payload)
+    print(r.content)
     assert r.status_code == 200
 
 
@@ -32,7 +32,7 @@ def test_get_img2():
 
 
 def test_remove_img1():
-    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/file/44524a33-c505-476d-b23b-c42de1fd796a")
+    r = requests.delete(f"http://127.0.0.1:7070/admin/delete/image/44524a33-c505-476d-b23b-c42de1fd796a")
     print(r.content)
     assert r.status_code == 200
 

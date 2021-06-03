@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use gotham_derive::StateData;
 use hashbrown::HashMap;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 use crate::image::ImageFormat;
 use crate::storage::DatabaseBackend;
@@ -16,6 +16,15 @@ pub const PAGE_SIZE: i64 = 50;
 #[derive(Clone, StateData)]
 pub struct StateConfig(pub Arc<Config>);
 
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum  LogLevel {
+    Off,
+    Info,
+    Debug,
+    Error,
+}
+
 /// A given size of a preset.
 /// Any uploaded images will be automatically duplicated and resized in this
 /// preset.
@@ -27,6 +36,7 @@ pub struct SizingPreset {
 
 #[derive(Deserialize)]
 pub struct Config {
+    pub log_level: LogLevel,
     pub host: String,
     pub port: u16,
     pub base_data_path: String,
@@ -90,6 +100,7 @@ impl Config {
         };
 
         Ok(json!({
+            "log_level": LogLevel::Info,
             "host": "127.0.0.1",
             "port": 7070,
             "base_data_path": "/images",

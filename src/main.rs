@@ -29,7 +29,7 @@ use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
-use crate::configure::StateConfig;
+use crate::configure::{StateConfig, LogLevel};
 use crate::image::{ImageFormat, ImageGet, ImageRemove};
 use crate::storage::{DatabaseBackend, StorageBackend};
 use crate::traits::DatabaseLinker;
@@ -93,13 +93,6 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
 /// start server and parse args (although not in that order).
 #[tokio::main]
 async fn main() -> Result<()> {
-    SimpleLogger::new()
-        .with_level(LevelFilter::Off)
-        .with_module_level("lust", LevelFilter::Debug)
-        .with_module_level("gotham", LevelFilter::Info)
-        .init()
-        .unwrap();
-
     let cli_args = parse_args();
     let (name, args) = cli_args.subcommand();
     match name {
@@ -134,6 +127,20 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
             "missing required config file, exiting...",
         ));
     }?;
+
+    let (goth_lvl, lust_lvl) = match cfg.log_level {
+        LogLevel::Off => (LevelFilter::Off, LevelFilter::Off),
+        LogLevel::Info => (LevelFilter::Info, LevelFilter::Info),
+        LogLevel::Debug => (LevelFilter::Info, LevelFilter::Debug),
+        LogLevel::Error => (LevelFilter::Error, LevelFilter::Error),
+    };
+
+    SimpleLogger::new()
+        .with_level(LevelFilter::Off)
+        .with_module_level("lust", lust_lvl)
+        .with_module_level("gotham", goth_lvl)
+        .init()
+        .unwrap();
 
     let fields: Vec<ImageFormat> = cfg
         .formats
