@@ -95,7 +95,7 @@ fn router(backend: storage::StorageBackend, config: StateConfig) -> Result<Route
 async fn main() -> Result<()> {
     SimpleLogger::new()
         .with_level(LevelFilter::Off)
-        .with_module_level("lust", LevelFilter::Info)
+        .with_module_level("lust", LevelFilter::Debug)
         .with_module_level("gotham", LevelFilter::Info)
         .init()
         .unwrap();

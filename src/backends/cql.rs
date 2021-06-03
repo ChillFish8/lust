@@ -99,6 +99,7 @@ impl Backend {
         let session = SessionBuilder::new()
             .user(cfg.user, cfg.password)
             .known_nodes(cfg.clusters.as_ref())
+            .tcp_nodelay(true)
             .build()
             .await?;
         info!("connect successful");
@@ -139,16 +140,27 @@ impl Backend {
 impl DatabaseLinker for Backend {
     async fn ensure_tables(&self, presets: Vec<&str>, formats: Vec<ImageFormat>) -> Result<()> {
         info!("building tables");
+
         let query = r#"
         CREATE TABLE IF NOT EXISTS lust_ks.image_metadata (
-            file_id UUID PRIMARY KEY,
+            file_id UUID,
             category TEXT,
             insert_date TIMESTAMP,
-            total_size INT
-        );"#;
+            total_size BIGINT,
+            PRIMARY KEY ((file_id), category)
+        );
+        "#;
 
         self.session.query(query, &[]).await?;
         info!("metadata table created successfully");
+
+
+        let query = r#"
+        CREATE INDEX IF NOT EXISTS ON lust_ks.image_metadata (category);
+        "#;
+
+        self.session.query(query, &[]).await?;
+        info!("metadata table index created successfully");
 
         let mut columns = vec![format!("file_id UUID PRIMARY KEY")];
 
@@ -184,19 +196,19 @@ impl ImageStore for Backend {
         format: ImageFormat,
     ) -> Option<BytesMut> {
         let qry = r#"
-        SELECT 1 FROM lust_ks.image_metadata
+        SELECT file_id FROM lust_ks.image_metadata
         WHERE file_id = ? AND category = ?;
         "#;
         let prepared = log_and_convert_error!(self.session.prepare(qry,).await)?;
 
         let query_result =
-            log_and_convert_error!(self.session.execute(&prepared, (file_id,)).await)?;
+            log_and_convert_error!(self.session.execute(&prepared, (file_id, category)).await)?;
 
         let _ = query_result.rows?;
 
         let column = to_variant_name(&format).expect("unreachable");
         let qry = format!(
-            "SELECT {column} FROM lust_ks.{table} WHERE file_id = ? AND category = ? LIMIT 1;",
+            "SELECT {column} FROM lust_ks.{table} WHERE file_id = ? LIMIT 1;",
             column = column,
             table = preset,
         );
@@ -204,7 +216,7 @@ impl ImageStore for Backend {
         let prepared = log_and_convert_error!(self.session.prepare(qry,).await)?;
 
         let query_result =
-            log_and_convert_error!(self.session.execute(&prepared, (file_id, category)).await)?;
+            log_and_convert_error!(self.session.execute(&prepared, (file_id,)).await)?;
 
         let mut rows = query_result.rows?;
         let row = rows.pop()?;
