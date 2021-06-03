@@ -29,7 +29,7 @@ use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
-use crate::configure::{StateConfig, LogLevel};
+use crate::configure::{LogLevel, StateConfig};
 use crate::image::{ImageFormat, ImageGet, ImageRemove};
 use crate::storage::{DatabaseBackend, StorageBackend};
 use crate::traits::DatabaseLinker;

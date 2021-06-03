@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use gotham_derive::StateData;
 use hashbrown::HashMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::image::ImageFormat;
 use crate::storage::DatabaseBackend;
@@ -18,7 +18,7 @@ pub struct StateConfig(pub Arc<Config>);
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum  LogLevel {
+pub enum LogLevel {
     Off,
     Info,
     Debug,
