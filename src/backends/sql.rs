@@ -2,12 +2,12 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use chrono::Utc;
+use log::error;
 use log::{debug, info};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
 use std::str::FromStr;
 use uuid::Uuid;
-use log::error;
 
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use sqlx::postgres::{PgPool, PgPoolOptions};
@@ -74,7 +74,7 @@ macro_rules! extract_or_none {
                 let row = row?;
                 let data: &[u8] = row.get($c);
                 Some(BytesMut::from(data))
-            },
+            }
             Err(e) => {
                 error!("failed to fetch row due to error: {:?}", e);
                 None
