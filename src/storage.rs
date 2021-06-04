@@ -12,7 +12,7 @@ use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::ImageStore;
 
-// The bellow definitions are a hack, this is due to
+// The bellow definitions are a hack, this is due to gotham requiring unwindsafe aka no interior mutability.
 pub(crate) static CASSANDRA: OnceCell<backends::cql::Backend> = OnceCell::new();
 pub(crate) static POSTGRES: OnceCell<backends::sql::PostgresBackend> = OnceCell::new();
 pub(crate) static MYSQL: OnceCell<backends::sql::MySQLBackend> = OnceCell::new();

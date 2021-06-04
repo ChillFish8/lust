@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  keydb:
+    image: eqalpha/keydb:latest
+    container_name: some-keydb
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./storage:/data
+      - ./config.conf:/etc/keydb/keydb.conf
