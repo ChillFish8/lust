@@ -9,9 +9,6 @@ RUN cargo build --release
 RUN cp ./target/release/lust .
 
 FROM alpine:latest as publish
-WORKDIR /app
+COPY --from=builder /builder/lust /lust
 
-COPY --from=builder /builder/lust /app
-RUN ls /app
-
-ENTRYPOINT ["/app/lust", "run"]
+ENTRYPOINT ["/lust", "run"]
