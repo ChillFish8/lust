@@ -19,7 +19,7 @@ Lust stores images via any of given database backends:
 #### Installation
 Currently you can build from source, re-built binary setups will be provided later, building just requires the tradition `cargo build --release`.
 
-#### After Instalition
+#### After Installation
 See the [getting started page](https://github.com/ChillFish8/lust/blob/master/getting-started.md) for more information after installation.
  
 ## Caching
