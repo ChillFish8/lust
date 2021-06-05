@@ -8,7 +8,7 @@
 - [Removing Images](#removing-images)
 - [Listing Images](#listing-images)
 
-# Initalising a Configuration
+# Initialising a Configuration
 Lust requires a configuration file to exist always and has many manditory keys. Because of this there is a utility command `init` which can be used to generate default configuration files.
 
 #### Usage:
@@ -19,6 +19,7 @@ The backend can be set to any of the valid backends:
 - `mysql` -> Covers MySQL and MariaDB.
 - `sqlite` -> Covers Sqlite.
 - `cassandra` -> Covers Cassandra and Scylla (v4 protocol) **WARNING: This is very beta in terms of performant configuration**
+- `redis` -> Covers Redis and KeyDB (Faster redis) **Does not support listing files but very performant**
 
 Once the file is generated you can change the configuration as you wish however, be careful not to remove keys.
 
@@ -50,10 +51,11 @@ Lust supports any of the following backends:
 - `mysql` -> Covers MySQL and MariaDB.
 - `sqlite` -> Covers Sqlite.
 - `cassandra` -> Covers Cassandra and Scylla (v4 protocol) **WARNING: This is very beta in terms of performant configuration**
+- `redis` -> Covers Redis and KeyDB (Faster redis) **Does not support listing files but very performant**
 
 When configuring a backend in the server config the format should look like:
-```js
-"database_backend": {
+```json5
+{
   "config": {
     // Backend Specific
   },
@@ -65,7 +67,11 @@ Each backend has a specific configuration layout see bellow:
 
 ### SQL based databases (Sqlite, PostgreSQL, MySQL)
 - `connection_uri` -> The direct connection URI e.g. `postgres://user:pass@localhost/postgres`.
-- `pool_size` -> The maxium connection pool size.
+- `pool_size` -> The maximum connection pool size.
+
+### Redis based databases (Redis, KeyDB)
+- `connection_uri` -> The direct connection URI e.g. `redis://user:pass@localhost/0`.
+- `pool_size` -> The maximum connection pool size.
 
 ### Cassandra 
 - `clusters` -> An array of strings following the `"ip:port"` format, each cluster should be one ip per machine.
@@ -77,8 +83,8 @@ Each backend has a specific configuration layout see bellow:
 Currently only `SimpleStrategy` and `NetworkTopologyStrategy` is supported.
 
 #### SimpleStrategy Example
-```js
-"keyspace": {
+```json5
+{
   "spec": {
     "replication_factor": 3
   },
@@ -87,8 +93,8 @@ Currently only `SimpleStrategy` and `NetworkTopologyStrategy` is supported.
 ```
 
 #### NetworkTopologyStrategy Example
-```js
-"keyspace": {
+```json5
+{
   "spec": [
     {"node_name": "DC1", "replication": 3},
     {"node_name": "DC2", "replication": 2}    
@@ -104,8 +110,8 @@ Each preset has a `width` and `height` key defining the sizing of the image.
 **An `original` preset always exists and contains the original image uploaded**
 
 #### Example
-```js
-"size_presets": {
+```json5
+{
   "large": {
     "height": 128,
     "width": 128
@@ -156,7 +162,7 @@ Lust gives you the ability to list and order the results in the database. **WARN
 Listing images be can accessed via the `/admin/list` endpoint and expects a POST request with a JSON body, all entries are chunked into 'pages' of `50` items per page.
 
 An example body would look like:
-```js
+```json5
 {
     "page": 1,
     "filter": {
