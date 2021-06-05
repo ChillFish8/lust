@@ -8,6 +8,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["image", "image-server"]
 include = ["src/**/*", "Cargo.toml"]
+description = "A fast, auto-optimising image server designed for multiple backends with throughput and latency in mind."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -39,6 +40,8 @@ serde = { version = "1", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 hashbrown = { version = "0.11.2", features = ["serde"] }
-scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main", version = "0.1.1" }
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres", "chrono", "uuid" ] }
 redis = { version = "0.20", features = ["tokio-comp", "connection-manager"] }
+
+[patch."https://github.com/chillfish8/lust"]
+scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main", version = "0.1.1" }
