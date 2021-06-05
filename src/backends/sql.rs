@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use chrono::Utc;
+use log::error;
 use log::{debug, info};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
@@ -68,11 +69,16 @@ fn build_delete_queries(presets: &Vec<&String>, placeholder: &str) -> Vec<String
 /// or becomes `None`.
 macro_rules! extract_or_none {
     ( $e:expr, $c:expr ) => {{
-        if let Ok(row) = $e {
-            let data: &[u8] = row.get($c);
-            Some(BytesMut::from(data))
-        } else {
-            None
+        match $e {
+            Ok(row) => {
+                let row = row?;
+                let data: &[u8] = row.get($c);
+                Some(BytesMut::from(data))
+            }
+            Err(e) => {
+                error!("failed to fetch row due to error: {:?}", e);
+                None
+            }
         }
     }};
 }
@@ -303,7 +309,7 @@ impl ImageStore for PostgresBackend {
         let qry = build_select_qry(column, &preset, "$1");
         let qry = sqlx::query(&qry).bind(file_id.to_string());
 
-        extract_or_none!(qry.fetch_one(&self.pool).await, column)
+        extract_or_none!(qry.fetch_optional(&self.pool).await, column)
     }
 
     async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
@@ -445,7 +451,7 @@ impl ImageStore for MySQLBackend {
         let qry = build_select_qry(column, &preset, "?");
         let query = sqlx::query(&qry).bind(file_id.to_string());
 
-        extract_or_none!(query.fetch_one(&self.pool).await, column)
+        extract_or_none!(query.fetch_optional(&self.pool).await, column)
     }
 
     async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
@@ -603,7 +609,7 @@ impl ImageStore for SqliteBackend {
         let qry = build_select_qry(column, &preset, "?");
         let query = sqlx::query(&qry).bind(file_id.to_string());
 
-        extract_or_none!(query.fetch_one(&self.pool).await, column)
+        extract_or_none!(query.fetch_optional(&self.pool).await, column)
     }
 
     async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
