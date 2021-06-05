@@ -4,34 +4,64 @@ use uuid::Uuid;
 use bytes::BytesMut;
 use serde::{Serialize, Deserialize};
 use log::error;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use redis::{AsyncCommands, Client, AsyncIter};
+use redis::{AsyncCommands, AsyncIter};
 use redis::aio::ConnectionManager;
 
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
 
-
 #[derive(Clone, Serialize, Deserialize)]
 pub struct RedisConfig {
     connection_uri: String,
+    pool_size: usize,
+}
+
+
+struct RedisPool {
+    connections: Vec<ConnectionManager>,
+    index: AtomicUsize,
+}
+
+impl RedisPool {
+    pub async fn connect(cfg: RedisConfig) -> Result<Self> {
+        let client = redis::Client::open(cfg.connection_uri)?;
+        let mut conns = Vec::new();
+        for _ in 0..cfg.pool_size {
+            let conn = client.get_tokio_connection_manager().await?;
+            conns.push(conn);
+        }
+
+        Ok(Self { connections: conns, index: AtomicUsize::new(0), })
+    }
+
+    pub fn get(&self) -> ConnectionManager {
+        let index = self.index.load(Ordering::Relaxed);
+        let conn = self.connections[index].clone();
+
+        if index == (self.connections.len() - 1) {
+            self.index.store(0, Ordering::Relaxed);
+        } else {
+            self.index.store(index + 1, Ordering::Relaxed);
+        }
+
+        conn
+    }
 }
 
 
 pub struct Backend {
-    client: Client,
-    conn: ConnectionManager,
+    pool: RedisPool,
 }
 
 impl Backend {
     pub async fn connect(cfg: RedisConfig) -> Result<Self> {
-        let client = redis::Client::open(cfg.connection_uri)?;
-        let conn = client.get_tokio_connection_manager().await?;
+        let pool = RedisPool::connect(cfg).await?;
 
         Ok(Self {
-            client,
-            conn,
+            pool,
         })
     }
 }
@@ -50,7 +80,7 @@ impl DatabaseLinker for Backend {
 impl ImageStore for Backend {
     async fn get_image(&self, file_id: Uuid, preset: String, category: &str, format: ImageFormat) -> Option<BytesMut> {
         let key = format!("{:?} {} {} {:?}", file_id, preset, category, format);
-        let mut conn = self.conn.clone();
+        let mut conn = self.pool.get();
         let result = conn.get(&key).await;
 
         let val: Vec<u8> = match result {
@@ -79,18 +109,18 @@ impl ImageStore for Backend {
             }
         }
 
-        let mut conn = self.conn.clone();
+        let mut conn = self.pool.get();
         conn.set_multiple(&pairs).await?;
 
         Ok(())
     }
 
     async fn remove_image(&self, file_id: Uuid, _presets: Vec<&String>) -> Result<()> {
-        let mut conn = self.conn.clone();
+        let mut conn = self.pool.get();
+        let mut conn2 = self.pool.get();
         let mut keys: AsyncIter<String> = conn.scan_match(format!("{:?}*", file_id)).await?;
         while let Some(v) = keys.next_item().await {
-            let mut conn_ = self.conn.clone();
-            conn_.del(v).await?;
+            conn2.del(v).await?;
         }
 
         Ok(())
