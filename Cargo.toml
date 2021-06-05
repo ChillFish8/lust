@@ -42,7 +42,4 @@ uuid = { version = "0.8.2", features = ["serde", "v4"] }
 hashbrown = { version = "0.11.2", features = ["serde"] }
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres", "chrono", "uuid" ] }
 redis = { version = "0.20", features = ["tokio-comp", "connection-manager"] }
-scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main", version = "0.1.1" }
-
-[patch."https://github.com/chillfish8/lust"]
-scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main", version = "0.1.1" }
+scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main" }
