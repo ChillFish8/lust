@@ -6,9 +6,7 @@ WORKDIR /builder
 COPY . .
 
 RUN cargo build --release
-RUN cp ./target/release/lust .
+RUN cp ./target/release/lust ./lust
+RUN rm -rf ./target
 
-FROM alpine:latest as publish
-COPY --from=builder /builder/lust /lust
-
-ENTRYPOINT ["/lust", "run"]
+ENTRYPOINT ["./lust", "run"]
