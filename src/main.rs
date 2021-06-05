@@ -160,6 +160,12 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
     presets.push("original");
 
     let backend: StorageBackend = match cfg.database_backend.clone() {
+        DatabaseBackend::Redis(db_cfg) => {
+            let mut db = backends::redis::Backend::connect(db_cfg).await?;
+            db.ensure_tables(presets, fields).await?;
+            let _ = storage::REDIS.set(db);
+            StorageBackend::Redis
+        }
         DatabaseBackend::Cassandra(db_cfg) => {
             let mut db = backends::cql::Backend::connect(db_cfg).await?;
             db.ensure_tables(presets, fields).await?;
