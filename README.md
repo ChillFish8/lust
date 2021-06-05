@@ -17,10 +17,22 @@ Lust stores images via any of given database backends:
 
 ## Getting started
 
-#### Installation
-Currently you can build from source, pre-built binary setups will be provided later, building just requires the tradition `cargo build --release`.
+### Installation
+#### Building from Source
+To building from source, just clone this repo via `git clone https://github.com/chillfish8/lust.git` and then run `cargo build --release`.
+#### Docker Images
+Lust has a set of pre-built, optimised docker images ready to go, they just require having a config.json attached to them and away you go.
 
-#### After Installation
+Example Dockerfile:
+```docker
+FROM chillfish8/lust:latest
+
+ADD ./config.json /config.json
+```
+
+You can run the image via `docker run`, you may wish to expose your set ports etc...
+
+### After Installation
 See the [getting started page](https://github.com/ChillFish8/lust/blob/master/getting-started.md) for more information after installation.
  
 ## Caching
