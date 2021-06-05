@@ -2,6 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use uuid::Uuid;
 use bytes::BytesMut;
+use serde::{Serialize, Deserialize};
 
 use redis::{AsyncCommands, Client};
 use redis::aio::ConnectionManager;
@@ -9,20 +10,21 @@ use redis::aio::ConnectionManager;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
+use std::hash::Hash;
 
 
-
+#[derive(Clone, Serialize, Deserialize)]
 pub struct RedisConfig {
     connection_uri: String,
 }
 
 
-pub struct RedisBackend {
+pub struct Backend {
     client: Client,
     conn: ConnectionManager,
 }
 
-impl RedisBackend {
+impl Backend {
     pub async fn connect(cfg: RedisConfig) -> Result<Self> {
         let client = redis::Client::open(cfg.connection_uri)?;
         let conn = client.get_tokio_connection_manager().await?;
@@ -35,7 +37,7 @@ impl RedisBackend {
 }
 
 #[async_trait]
-impl DatabaseLinker for RedisBackend {
+impl DatabaseLinker for Backend {
     /// Due to the nature of the key-value setup for redis clients this has completely
     /// different handling so does not do anything when this funciton is called.
     async fn ensure_tables(&mut self, _presets: Vec<&str>, _columns: Vec<ImageFormat>) -> Result<()> {
@@ -45,10 +47,12 @@ impl DatabaseLinker for RedisBackend {
 
 
 #[async_trait]
-impl ImageStore for RedisBackend {
+impl ImageStore for Backend {
     async fn get_image(&self, file_id: Uuid, preset: String, category: &str, format: ImageFormat) -> Option<BytesMut> {
         let hashable = (file_id, preset, category, format);
-        hashable.hash
+        let out = format!("{:?}", hashable);
+        println!("{}", out);
+        None
     }
 
     async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
@@ -56,11 +60,11 @@ impl ImageStore for RedisBackend {
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-
+        unimplemented!()
     }
 
     /// This is non-functional due to limitations with the key-value setup of redis.
-    async fn list_entities(&self, filter: FilterType, order: OrderBy, page: usize) -> Result<Vec<IndexResult>> {
+    async fn list_entities(&self, _filter: FilterType, _order: OrderBy, _page: usize) -> Result<Vec<IndexResult>> {
         Err(anyhow::Error::msg("redis backend does not support listing entities"))
     }
 }
