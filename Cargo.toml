@@ -3,6 +3,11 @@ name = "lust"
 version = "1.1.0"
 authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
 edition = "2018"
+documentation = "getting-started.md"
+readme = "README.md"
+license = "MIT"
+keywords = ["image", "image-server"]
+include = ["src/**/*", "Cargo.toml"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -34,6 +39,6 @@ serde = { version = "1", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "0.8.2", features = ["serde", "v4"] }
 hashbrown = { version = "0.11.2", features = ["serde"] }
-scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main" }
+scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main", version = "0.1.1" }
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres", "chrono", "uuid" ] }
 redis = { version = "0.20", features = ["tokio-comp", "connection-manager"] }
