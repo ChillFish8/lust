@@ -9,6 +9,7 @@ Lust is a static image server designed to automatically convert uploaded image t
  
 Lust stores images via any of given database backends:
  
+- Redis / KeyDB
 - Cassandra / ScyllaDB
 - PostgreSQL
 - MySQL / MariaDB
@@ -17,7 +18,7 @@ Lust stores images via any of given database backends:
 ## Getting started
 
 #### Installation
-Currently you can build from source, re-built binary setups will be provided later, building just requires the tradition `cargo build --release`.
+Currently you can build from source, pre-built binary setups will be provided later, building just requires the tradition `cargo build --release`.
 
 #### After Installation
 See the [getting started page](https://github.com/ChillFish8/lust/blob/master/getting-started.md) for more information after installation.
@@ -31,7 +32,10 @@ The larger the number the more images it will cache at once and vice versa.
 Lust's ability to scale is purely down to the backend you use, something like SQLite will obviously suffer at any sort of scale and is meant only really for development purposes. Personally I recommend PostgreSQL (leading to vertical scaling storage) or Scylla (Horzontally scaling storage) depending on your needs.
 If you want a very small amount of cached images then Postgres will out perform Scylla considerably at random reads however, Scylla is far more suites to large scaling and distributed system as well as large amounts of writes.
 
-Performance of each database generally doesn't matter too much due to the processing time of each image being more than the IO latency when adding images and the cache supporting reads, that being said if you have alot of random inconsistent reads PostgreSQL will likely be the best, or if you want large distributed scaling Scylla will allow you to scale horozontally.
+Performance of each database generally doesn't matter too much due to the processing time of each image being more than the IO latency when adding images and the cache supporting reads, that being said if you have alot of random inconsistent reads PostgreSQL will likely be the best, or if you want large distributed scaling Scylla will allow you to scale horizontally.
+
+If you want the best of both worlds I would recommend looking at KeyDB (Redis) with disk persistence, when setup correctly this
+can be an incredibly powerful setup.
 
 ## Formats
 Lust supports any of the following formats: 
@@ -49,7 +53,7 @@ Regardless of presets an `original` image is always stored and can be accessed v
 The default preset when served without a `sized` parameter can be set in the configuration file via `default_serving_preset` key.
 
 ## Webp Optimisation
-Lust supports webp automisation encoding, by default it encodes with lossless compression but this can be changed via the `webp_quality` key in the configuration file
+Lust supports automatic webp encoding, by default it encodes with lossless compression but this can be changed via the `webp_quality` key in the configuration file
 and should be a float from `0.0` to `100.0` with the quality of the image changing respectively.
 
 ## Base64 Support
@@ -67,7 +71,7 @@ For example lets upload an image:
 
 This image is about 91KB in size as a single image, If we upload this and convert to the 3 base image formats with some presets:
 
-```js
+```json5
 {
   'data': {
     'file_id': 'ccbe2207-8629-4938-9da9-3f75706f9b4e',
