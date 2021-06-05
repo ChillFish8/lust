@@ -5,7 +5,7 @@ use bytes::BytesMut;
 use serde::{Serialize, Deserialize};
 use log::error;
 
-use redis::{AsyncCommands, Client};
+use redis::{AsyncCommands, Client, AsyncIter};
 use redis::aio::ConnectionManager;
 
 use crate::context::{FilterType, IndexResult, OrderBy};
@@ -85,8 +85,15 @@ impl ImageStore for Backend {
         Ok(())
     }
 
-    async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {
-        unimplemented!()
+    async fn remove_image(&self, file_id: Uuid, _presets: Vec<&String>) -> Result<()> {
+        let mut conn = self.conn.clone();
+        let mut keys: AsyncIter<String> = conn.scan_match(format!("{:?}*", file_id)).await?;
+        while let Some(v) = keys.next_item().await {
+            let mut conn_ = self.conn.clone();
+            conn_.del(v).await?;
+        }
+
+        Ok(())
     }
 
     /// This is non-functional due to limitations with the key-value setup of redis.
