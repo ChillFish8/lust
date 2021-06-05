@@ -57,6 +57,13 @@ impl Config {
 
     pub fn template(backend: &str) -> anyhow::Result<serde_json::Value> {
         let config = match backend.to_lowercase().as_str() {
+            "redis" => json!({
+                "type": "redis",
+                "config": {
+                    "connection_uri": "redis://user:pass@localhost/0",
+                    "pool_size": 12,
+                }
+            }),
             "cassandra" => json!({
                 "type": "cassandra",
                 "config": {

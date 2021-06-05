@@ -8,4 +8,4 @@ services:
       - "6379:6379"
     volumes:
       - ./storage:/data
-      - ./config.conf:/etc/keydb/keydb.conf
+      - ./keydb.conf:/etc/keydb/keydb.conf
