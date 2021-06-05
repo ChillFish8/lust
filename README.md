@@ -29,10 +29,16 @@ The larger the number the more images it will cache at once and vice versa.
 *NOTE: With bigger images this can create much higher RAM usage*
 
 ## Scaling
-Lust's ability to scale is purely down to the backend you use, something like SQLite will obviously suffer at any sort of scale and is meant only really for development purposes. Personally I recommend PostgreSQL (leading to vertical scaling storage) or Scylla (Horzontally scaling storage) depending on your needs.
-If you want a very small amount of cached images then Postgres will out perform Scylla considerably at random reads however, Scylla is far more suites to large scaling and distributed system as well as large amounts of writes.
+Lust's ability to scale is purely down to the backend you use, something like SQLite will obviously suffer 
+at any sort of scale and is meant only really for development purposes.
+Personally I recommend PostgreSQL (leading to vertical scaling storage) or Scylla (Horizontally scaling storage) depending on your needs.
+If you want a very small amount of cached images then Postgres will out perform Scylla considerably at random reads however, 
+Scylla is far more suites to large scaling and distributed system as well as large amounts of writes.
 
-Performance of each database generally doesn't matter too much due to the processing time of each image being more than the IO latency when adding images and the cache supporting reads, that being said if you have alot of random inconsistent reads PostgreSQL will likely be the best, or if you want large distributed scaling Scylla will allow you to scale horizontally.
+Performance of each database generally doesn't matter too much due to the processing time of each image 
+being more than the IO latency when adding images and the cache supporting reads, that being said if 
+you have a lot of random inconsistent reads PostgreSQL will likely be the best, or 
+if you want large distributed scaling Scylla will allow you to scale horizontally.
 
 If you want the best of both worlds I would recommend looking at KeyDB (Redis) with disk persistence, when setup correctly this
 can be an incredibly powerful setup.
@@ -44,10 +50,11 @@ Lust supports any of the following formats:
 - GIF
 - Webp
  
-Any uploaded images will be given a unqiue uuid and be re-encoded into all the other enabled formats in all presets. This is especially useful when you want to serve several varients of the same image with diffrent formats.
+Any uploaded images will be given a unique uuid and be re-encoded into all the other enabled formats in all presets. 
+This is especially useful when you want to serve several variants of the same image with different formats.
  
 ## Presets
-The server can take several sizing presets which can be targetted via the `size` query parameter when getting an image. These presets will mean every image at upload time will be resized to fit the width and height bounds using the nearest approximation.
+The server can take several sizing presets which can be targeted via the `size` query parameter when getting an image. These presets will mean every image at upload time will be resized to fit the width and height bounds using the nearest approximation.
 
 Regardless of presets an `original` image is always stored and can be accessed via the `size=original` query.
 The default preset when served without a `sized` parameter can be set in the configuration file via `default_serving_preset` key.
@@ -58,7 +65,7 @@ and should be a float from `0.0` to `100.0` with the quality of the image changi
 
 ## Base64 Support
 
-Lust will serve given images / gifs as Basse64 data the `encode` query parameter (`true`/`false`) this will return
+Lust will serve given images / gifs as Base64 data the `encode` query parameter (`true`/`false`) this will return
 a JSON response unlike the tradition raw response.
 
 ## Data Efficiency
