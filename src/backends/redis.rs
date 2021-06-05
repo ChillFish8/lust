@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use uuid::Uuid;
 use bytes::BytesMut;
 use serde::{Serialize, Deserialize};
+use log::error;
 
 use redis::{AsyncCommands, Client};
 use redis::aio::ConnectionManager;
@@ -10,7 +11,6 @@ use redis::aio::ConnectionManager;
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
 use crate::traits::{DatabaseLinker, ImageStore};
-use std::hash::Hash;
 
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -49,14 +49,40 @@ impl DatabaseLinker for Backend {
 #[async_trait]
 impl ImageStore for Backend {
     async fn get_image(&self, file_id: Uuid, preset: String, category: &str, format: ImageFormat) -> Option<BytesMut> {
-        let hashable = (file_id, preset, category, format);
-        let out = format!("{:?}", hashable);
-        println!("{}", out);
-        None
+        let key = format!("{:?} {} {} {:?}", file_id, preset, category, format);
+        let mut conn = self.conn.clone();
+        let result = conn.get(&key).await;
+
+        let val: Vec<u8> = match result {
+           Ok(v) => v,
+           Err(e) => {
+               error!("failed to fetch key {} from redis: {:?}", &key, e);
+               return None
+            }
+        };
+
+        if val.len() == 0 {
+            None
+        } else {
+            let ref_: &[u8] = val.as_ref();
+            Some(BytesMut::from(ref_))
+        }
     }
 
     async fn add_image(&self, file_id: Uuid, category: &str, data: ImagePresetsData) -> Result<()> {
-        unimplemented!()
+        let mut pairs = Vec::new();
+
+        for (preset, formats) in data {
+            for (format, buff) in formats {
+                let key = format!("{:?} {} {} {:?}", &file_id, &preset, category, format);
+                pairs.push((key, buff.to_vec()));
+            }
+        }
+
+        let mut conn = self.conn.clone();
+        conn.set_multiple(&pairs).await?;
+
+        Ok(())
     }
 
     async fn remove_image(&self, file_id: Uuid, presets: Vec<&String>) -> Result<()> {

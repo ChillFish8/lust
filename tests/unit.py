@@ -22,7 +22,7 @@ def test_png_upload1():
 
 
 def test_get_img1():
-    r = requests.get(f"http://127.0.0.1:7070/images/3163ad37-1a36-4e76-9257-4f27c09c6457")
+    r = requests.get(f"http://127.0.0.1:7070/images/84d88469-1b97-4d6d-95a3-5782fe891f32")
     assert r.status_code == 200
 
 
@@ -41,4 +41,4 @@ if __name__ == '__main__':
     test_png_upload1()
     test_get_img1()
     test_get_img2()
-    test_remove_img1()
+    # test_remove_img1()
