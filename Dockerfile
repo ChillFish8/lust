@@ -12,6 +12,7 @@ RUN strip target/x86_64-unknown-linux-musl/release/lust
 
 # Start building the final image
 FROM scratch
-WORKDIR /home/rust/
+WORKDIR /etc/lust
+
 COPY --from=builder /home/rust/target/x86_64-unknown-linux-musl/release/lust .
 ENTRYPOINT ["./lust", "run"]
