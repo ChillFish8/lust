@@ -6,3 +6,4 @@
 /database.db-shm
 /database.db-wal
 /tests/backend_runners/**/storage/
+/tests/noqa

@@ -43,3 +43,7 @@ hashbrown = { version = "0.11.2", features = ["serde"] }
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "mysql", "sqlite", "postgres", "chrono", "uuid" ] }
 redis = { version = "0.20", features = ["tokio-comp", "connection-manager"] }
 scylla = { git = "https://github.com/scylladb/scylla-rust-driver.git", branch = "main" }
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
