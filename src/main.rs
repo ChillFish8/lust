@@ -11,7 +11,7 @@ mod traits;
 #[macro_use]
 extern crate serde_json;
 
-use gotham::middleware::logger::SimpleLogger as GothSimpleLogger;
+use gotham::middleware::logger::RequestLogger as GothSimpleLogger;
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::new_pipeline;
 use gotham::pipeline::single::single_pipeline;
