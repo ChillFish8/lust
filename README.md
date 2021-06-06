@@ -27,7 +27,7 @@ Example Dockerfile:
 ```docker
 FROM chillfish8/lust:latest
 
-ADD ./config.json /config.json
+ADD ./config.json /etc/lust/config.json
 ```
 
 You can run the image via `docker run`, you may wish to expose your set ports etc...
