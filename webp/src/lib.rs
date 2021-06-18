@@ -2,9 +2,10 @@ use image::DynamicImage;
 use libwebp_sys::*;
 use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Deref, DerefMut};
+use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
 
 
-/// Inits the global lossless encoder config.
+/// Inits the global encoder config.
 ///
 ///     - quality:
 ///         This parameter is the amount of effort put into the
@@ -22,9 +23,9 @@ use std::ops::{Deref, DerefMut};
 ///         and 9 (slower, best compression). A good default level is '6',
 ///         providing a fair tradeoff between compression speed and final
 ///         compressed size.
-pub fn init_lossless(quality: f32, method: i32, threads: u32, efficiency: u32) {
+pub fn init_lossy(lossless: bool, quality: f32, method: i32, threads: u32, efficiency: u32) {
     let cfg = WebPConfig {
-        lossless: 1,
+        lossless: if lossless { 1 } else { 0 },
         quality,
         method,
         image_hint: WebPImageHint::WEBP_HINT_DEFAULT,
@@ -55,9 +56,20 @@ pub fn init_lossless(quality: f32, method: i32, threads: u32, efficiency: u32) {
     };
 
     unsafe {
-        let pt = Box::into_raw(Box::from(cfg)) as *mut WebPConfig;
-
-        WebPConfigLosslessPreset(pt, efficiency as i32);
+        let ptr = Box::into_raw(Box::from(cfg)) as *mut WebPConfig;
+        if lossless {
+            WebPConfigInitInternal(
+                ptr,
+                WEBP_PRESET_DEFAULT,
+                quality,
+                WEBP_ENCODER_ABI_VERSION,
+            );
+        } else {
+            WebPConfigLosslessPreset (
+                ptr,
+                efficiency as i32,
+            );
+        }
     }
 }
 
