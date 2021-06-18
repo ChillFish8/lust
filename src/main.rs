@@ -21,7 +21,7 @@ use gotham_derive::{StateData, StaticResponseExtender};
 
 use anyhow::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
-use log::LevelFilter;
+use log::{LevelFilter, info};
 use serde::Deserialize;
 use simple_logger::SimpleLogger;
 use std::net::SocketAddr;
@@ -141,6 +141,39 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
         .with_module_level("gotham", goth_lvl)
         .init()
         .unwrap();
+
+    let lossless = cfg.webp_quality.is_none();
+    let quality = if lossless {
+        cfg.webp_compression.unwrap()
+    } else {
+        cfg.webp_quality.unwrap()
+    };
+    let threads = if let Some(threads) = cfg.webp_threads {
+        threads
+    } else {
+        let cpus = num_cpus::get() as u32;
+        if cpus < 3 {
+            cpus
+        } else {
+            cpus - 2
+        }
+    };
+    let method = cfg.webp_method.unwrap_or(4) as i32;
+    let efficiency = cfg.webp_efficiency.unwrap_or(6) as u32;
+    info!(
+        "setting up webp state. \
+         Lossless: {}, \
+         Quality: {}, \
+         Method: {}, \
+         Threads: {}, \
+         Efficiency: {}", lossless, quality, method, threads, efficiency);
+    webp::init_global(
+        lossless,
+        quality,
+        method,
+        threads,
+        efficiency,
+    );
 
     let fields: Vec<ImageFormat> = cfg
         .formats

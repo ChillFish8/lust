@@ -124,6 +124,7 @@ fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, Imag
     }
 
     // This is the slowest conversion, maybe change??
+    let start = std::time::Instant::now();
     if is_enabled!(ImageFormat::WebP, cfg.0.formats) {
         let raw = if let Some(quality) = cfg.0.webp_quality {
             Encoder::from_image(&im).encode(quality)
@@ -134,6 +135,7 @@ fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, Imag
         resulting_sizes.insert(ImageFormat::WebP, webp.len());
         resulting_data.insert(ImageFormat::WebP, webp);
     }
+    println!("{:?}", start.elapsed());
 
     Ok((resulting_data, resulting_sizes))
 }

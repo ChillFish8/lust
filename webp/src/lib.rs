@@ -23,7 +23,7 @@ use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
 ///         and 9 (slower, best compression). A good default level is '6',
 ///         providing a fair tradeoff between compression speed and final
 ///         compressed size.
-pub fn init_lossy(lossless: bool, quality: f32, method: i32, threads: u32, efficiency: u32) {
+pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32, efficiency: u32) {
     let cfg = WebPConfig {
         lossless: if lossless { 1 } else { 0 },
         quality,

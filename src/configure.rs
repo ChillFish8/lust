@@ -46,6 +46,10 @@ pub struct Config {
     pub default_serving_preset: String,
     pub default_serving_format: ImageFormat,
     pub webp_quality: Option<f32>,
+    pub webp_compression: Option<f32>,
+    pub webp_method: Option<u8>,
+    pub webp_threads: Option<u32>,
+    pub webp_efficiency: Option<u8>,
     pub cache_size: usize,
 }
 
@@ -134,7 +138,11 @@ impl Config {
             },
             "default_serving_preset": "original",
             "default_serving_format": "webp",
-            "webp_ratio": None::<f32>,
+            "webp_quality": None::<f32>,
+            "webp_compression": Some(50),
+            "webp_method": Some(4),
+            "webp_threads": None::<u32>,
+            "webp_efficiency": Some(6),
             "cache_size": 500,
         }))
     }
