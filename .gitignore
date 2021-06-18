@@ -1,7 +1,7 @@
-/target
 /venv/
 /config.json
-/Cargo.lock
+/**/target
+/**/Cargo.lock
 /database.db
 /database.db-shm
 /database.db-wal
