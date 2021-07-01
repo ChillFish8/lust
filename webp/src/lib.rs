@@ -185,7 +185,7 @@ unsafe fn encode(
         .expect("config un-initialised.")
         .clone();
 
-    let mut picture = if quality == -1.0 {
+    let mut picture = if cfg.lossless == 1 {
         empty_lossless_webp_picture()
     } else {
         empty_lossy_webp_picture()
@@ -202,6 +202,7 @@ unsafe fn encode(
     let cfg_ptr = Box::into_raw(Box::from(cfg));
     let picture_ptr = Box::into_raw(Box::from(picture));
     let writer_ptr = Box::into_raw(Box::from(writer));
+    WebPMemoryWriterInit(writer_ptr);
 
     let width = width as _;
     let height = height as _;
@@ -209,11 +210,10 @@ unsafe fn encode(
     picture.width = width;
     picture.height = height;
 
-
     picture.writer = WebPWriterFunction::None;
     picture.custom_ptr = writer_ptr as *mut _;
 
-    let success = match layout {
+    let ok = match layout {
         PixelLayout::RGB => {
              let stride = width * 3;
              WebPPictureImportRGB(picture_ptr, image.as_ptr(), stride)
@@ -223,16 +223,14 @@ unsafe fn encode(
              WebPPictureImportRGBA(picture_ptr, image.as_ptr(), stride)
         }
     };
+    println!("{}", ok);
 
-    if success == 0 {
-        panic!("fuck, memory error.")
-    }
-
-    let success = WebPEncode(cfg_ptr, picture_ptr);
+    let ok = WebPEncode(cfg_ptr, picture_ptr);
+    println!("{:?}", (*picture_ptr).error_code);
     WebPPictureFree(picture_ptr);
-    if success == 0 {
+    if ok == 0 {
         WebPMemoryWriterClear(writer_ptr);
-        panic!("fuck, memory error.")
+        panic!("fuck, memory error. at encoding.")
     }
 
     WebPMemory(writer.mem, writer.size)
@@ -275,7 +273,7 @@ impl DerefMut for WebPMemory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::read;
+    use std::fs::write;
 
     fn ensure_global() {
         init_global(
@@ -288,20 +286,28 @@ mod tests {
 
     #[test]
     fn test_basic_sample_1() {
-        let image = image::open("../test_samples/news.png")
+        let image = image::open("./test_samples/news.png")
             .expect("load image");
         ensure_global();
 
         let encoder = Encoder::from_image(&image);
         let memory = encoder.encode();
-        memory.to_vec()
+        let buffer = memory.as_ref();
+        write("./news.webp", buffer)
+            .expect("write image");
     }
 
     #[test]
     fn test_basic_sample_2() {
-        let image = read("../test_samples/release.png").expect("read file");
+        let image = image::open("./test_samples/release.png")
+            .expect("load image");
         ensure_global();
 
 
+        let encoder = Encoder::from_image(&image);
+        let memory = encoder.encode();
+        let buffer = memory.as_ref();
+        write("./release.webp", buffer)
+            .expect("write image");
     }
 }
