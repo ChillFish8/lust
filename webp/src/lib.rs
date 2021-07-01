@@ -293,7 +293,8 @@ mod tests {
         ensure_global();
 
         let encoder = Encoder::from_image(&image);
-        encoder.encode_lossless()
+        let memory = encoder.encode();
+        memory.to_vec()
     }
 
     #[test]
