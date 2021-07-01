@@ -167,16 +167,9 @@ impl<'a>  Encoder<'a>  {
         Self { image, width, height, layout: PixelLayout::RGBA }
     }
 
-    /// Encode the image with the given quality.
-    /// The image quality must be between 0.0 and 100.0 inclusive for minimal
-    /// and maximal quality respectively.
-    pub fn encode(&self, quality: f32) -> WebPMemory {
-        unsafe { encode(self.image, self.layout, self.width, self.height, quality) }
-    }
-
-    /// Encode the image losslessly.
-    pub fn encode_lossless(&self) -> WebPMemory {
-        unsafe { encode(self.image, self.layout, self.width, self.height, -1.0) }
+    /// Encode the image with the given global config.
+    pub fn encode(&self) -> WebPMemory {
+        unsafe { encode(self.image, self.layout, self.width, self.height) }
     }
 }
 
@@ -186,7 +179,6 @@ unsafe fn encode(
     layout: PixelLayout,
     width: u32,
     height: u32,
-    quality: f32,
 ) -> WebPMemory{
 
     let cfg = CONFIG.get()
@@ -276,5 +268,39 @@ impl Deref for WebPMemory {
 impl DerefMut for WebPMemory {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { std::slice::from_raw_parts_mut(self.0, self.1) }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::read;
+
+    fn ensure_global() {
+        init_global(
+            true,
+            90.0,
+            3,
+            10,
+        )
+    }
+
+    #[test]
+    fn test_basic_sample_1() {
+        let image = image::open("../test_samples/news.png")
+            .expect("load image");
+        ensure_global();
+
+        let encoder = Encoder::from_image(&image);
+        encoder.encode_lossless()
+    }
+
+    #[test]
+    fn test_basic_sample_2() {
+        let image = read("../test_samples/release.png").expect("read file");
+        ensure_global();
+
+
     }
 }
