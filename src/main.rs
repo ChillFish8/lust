@@ -159,20 +159,17 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
         }
     };
     let method = cfg.webp_method.unwrap_or(4) as i32;
-    let efficiency = cfg.webp_efficiency.unwrap_or(6) as u32;
     info!(
         "setting up webp state. \
          Lossless: {}, \
          Quality: {}, \
          Method: {}, \
-         Threads: {}, \
-         Efficiency: {}", lossless, quality, method, threads, efficiency);
+         Threads: {}", lossless, quality, method, threads);
     webp::init_global(
         lossless,
         quality,
         method,
         threads,
-        efficiency,
     );
 
     let fields: Vec<ImageFormat> = cfg
