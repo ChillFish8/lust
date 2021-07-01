@@ -1,9 +1,14 @@
-use image::DynamicImage;
-use libwebp_sys::*;
 use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Deref, DerefMut};
-use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
 
+use image::DynamicImage;
+use once_cell::sync::OnceCell;
+
+use libwebp_sys::*;
+use libwebp_sys::WebPEncodingError::VP8_ENC_OK;
+
+
+static CONFIG: OnceCell<WebPConfig> = OnceCell::new();
 
 /// Inits the global encoder config.
 ///
@@ -17,13 +22,7 @@ use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
 ///
 ///     - threads:
 ///         The amount of threads to attempt to use in multi-threaded encoding.
-///
-///     - efficiency:
-///         The desired efficiency level between 0 (fastest, lowest compression)
-///         and 9 (slower, best compression). A good default level is '6',
-///         providing a fair tradeoff between compression speed and final
-///         compressed size.
-pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32, efficiency: u32) {
+pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32) {
     let cfg = WebPConfig {
         lossless: if lossless { 1 } else { 0 },
         quality,
@@ -54,23 +53,71 @@ pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32, effi
         use_sharp_yuv: 0,
         pad: [100, 100]
     };
+    
+    let _ = CONFIG.set(cfg);
+}
 
-    unsafe {
-        let ptr = Box::into_raw(Box::from(cfg)) as *mut WebPConfig;
-        if lossless {
-            WebPConfigInitInternal(
-                ptr,
-                WEBP_PRESET_DEFAULT,
-                quality,
-                WEBP_ENCODER_ABI_VERSION,
-            );
-        } else {
-            WebPConfigLosslessPreset (
-                ptr,
-                efficiency as i32,
-            );
-        }
+/// Picture is uninitialized.
+pub fn empty_lossless_webp_picture() -> WebPPicture {
+    WebPPicture {
+        use_argb: 1,
+
+        // YUV input
+        colorspace: WebPEncCSP::WEBP_YUV420,
+        width: 0,
+        height: 0,
+        y: std::ptr::null_mut(),
+        u: std::ptr::null_mut(),
+        v: std::ptr::null_mut(),
+        y_stride: 0,
+        uv_stride: 0,
+        a: std::ptr::null_mut(),
+        a_stride: 0,
+        pad1: [0, 0],
+
+        // ARGB input
+        argb: std::ptr::null_mut(),
+        argb_stride: 0,
+        pad2: [
+            0,
+            0,
+            0,
+        ],
+
+        // OUTPUT
+        writer: None,
+        custom_ptr: std::ptr::null_mut(),
+        extra_info_type: 0,
+        extra_info: std::ptr::null_mut(),
+
+        // STATS AND REPORTS
+        stats: std::ptr::null_mut(),
+        error_code: VP8_ENC_OK,
+        progress_hook: None,
+        user_data: std::ptr::null_mut(),
+
+        // padding for later use
+        pad3: [0, 0, 0],
+
+        // Unused for now
+        pad4: std::ptr::null_mut(),
+        pad5: std::ptr::null_mut(),
+
+        // padding for later use
+        pad6: [0, 0, 0, 0, 0, 0, 0, 0],
+
+        // PRIVATE FIELDS
+        memory_: std::ptr::null_mut(),
+        memory_argb_: std::ptr::null_mut(),
+        pad7: [std::ptr::null_mut(), std::ptr::null_mut()],
     }
+}
+
+/// Picture is uninitialized.
+pub fn empty_lossy_webp_picture() -> WebPPicture {
+    let mut picture = empty_lossless_webp_picture();
+    picture.use_argb = 0;
+    picture
 }
 
 #[derive(Copy, Clone)]
@@ -142,31 +189,61 @@ unsafe fn encode(
     quality: f32,
 ) -> WebPMemory{
 
+    let cfg = CONFIG.get()
+        .expect("config un-initialised.")
+        .clone();
+
+    let mut picture = if quality == -1.0 {
+        empty_lossless_webp_picture()
+    } else {
+        empty_lossy_webp_picture()
+    };
+
+    let buffer = std::ptr::null_mut::<u8>();
+    let writer = WebPMemoryWriter {
+        mem: buffer,
+        size: 0,
+        max_size: 0,
+        pad: [0]
+    };
+
+    let cfg_ptr = Box::into_raw(Box::from(cfg));
+    let picture_ptr = Box::into_raw(Box::from(picture));
+    let writer_ptr = Box::into_raw(Box::from(writer));
 
     let width = width as _;
     let height = height as _;
-    let mut buffer = std::ptr::null_mut::<u8>();
 
-    let len = match layout {
-        PixelLayout::RGB if quality < 0.0 => {
-            let stride = width * 3;
-            WebPEncodeLosslessRGB(image.as_ptr(), width, height, stride, &mut buffer as *mut _)
-        }
+    picture.width = width;
+    picture.height = height;
+
+
+    picture.writer = WebPWriterFunction::None;
+    picture.custom_ptr = writer_ptr as *mut _;
+
+    let success = match layout {
         PixelLayout::RGB => {
-            let stride = width * 3;
-            WebPEncodeRGB(image.as_ptr(), width, height, stride, quality, &mut buffer as *mut _)
-        }
-        PixelLayout::RGBA if quality < 0.0 => {
-            let stride = width * 4;
-            WebPEncodeLosslessRGBA(image.as_ptr(), width, height, stride, &mut buffer as *mut _)
+             let stride = width * 3;
+             WebPPictureImportRGB(picture_ptr, image.as_ptr(), stride)
         }
         PixelLayout::RGBA => {
-            let stride = width * 4;
-            WebPEncodeRGBA(image.as_ptr(), width, height, stride, quality, &mut buffer as *mut _)
+             let stride = width * 4;
+             WebPPictureImportRGBA(picture_ptr, image.as_ptr(), stride)
         }
     };
 
-    WebPMemory(buffer, len)
+    if success == 0 {
+        panic!("fuck, memory error.")
+    }
+
+    let success = WebPEncode(cfg_ptr, picture_ptr);
+    WebPPictureFree(picture_ptr);
+    if success == 0 {
+        WebPMemoryWriterClear(writer_ptr);
+        panic!("fuck, memory error.")
+    }
+
+    WebPMemory(writer.mem, writer.size)
 }
 
 
