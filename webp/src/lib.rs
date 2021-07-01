@@ -6,6 +6,7 @@ use once_cell::sync::OnceCell;
 
 use libwebp_sys::*;
 use libwebp_sys::WebPEncodingError::VP8_ENC_OK;
+use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
 
 
 static CONFIG: OnceCell<WebPConfig> = OnceCell::new();
@@ -202,6 +203,15 @@ unsafe fn encode(
     let cfg_ptr = Box::into_raw(Box::from(cfg));
     let picture_ptr = Box::into_raw(Box::from(picture));
     let writer_ptr = Box::into_raw(Box::from(writer));
+    if WebPConfigInitInternal(cfg_ptr, WEBP_PRESET_DEFAULT, cfg.quality, WEBP_ENCODER_ABI_VERSION) == 0 {
+        panic!("config init failed");
+    };
+
+    if WebPPictureInitInternal(picture_ptr, WEBP_ENCODER_ABI_VERSION) == 0 {
+        panic!("picture init failed");
+    }
+
+
     WebPMemoryWriterInit(writer_ptr);
 
     let width = width as _;
