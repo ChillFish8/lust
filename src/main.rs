@@ -148,28 +148,19 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
     } else {
         cfg.webp_quality.unwrap()
     };
-    let threads = if let Some(threads) = cfg.webp_threads {
-        threads
-    } else {
-        let cpus = num_cpus::get() as u32;
-        if cpus < 3 {
-            cpus
-        } else {
-            cpus - 2
-        }
-    };
+    let threading = cfg.webp_threading.unwrap_or(true);
     let method = cfg.webp_method.unwrap_or(4) as i32;
     info!(
         "setting up webp state. \
          Lossless: {}, \
          Quality: {}, \
          Method: {}, \
-         Threads: {}", lossless, quality, method, threads);
+         Threading: {}", lossless, quality, method, threading);
     webp::init_global(
         lossless,
         quality,
         method,
-        threads,
+        threading,
     );
 
     let fields: Vec<ImageFormat> = cfg

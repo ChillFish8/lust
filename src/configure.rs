@@ -48,7 +48,7 @@ pub struct Config {
     pub webp_quality: Option<f32>,
     pub webp_compression: Option<f32>,
     pub webp_method: Option<u8>,
-    pub webp_threads: Option<u32>,
+    pub webp_threading: Option<bool>,
     pub cache_size: usize,
 }
 
@@ -140,7 +140,7 @@ impl Config {
             "webp_quality": None::<f32>,
             "webp_compression": Some(50),
             "webp_method": Some(4),
-            "webp_threads": None::<u32>,
+            "webp_threading": Some(true),
             "cache_size": 500,
         }))
     }
