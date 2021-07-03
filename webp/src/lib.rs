@@ -58,8 +58,9 @@ pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32) {
     let _ = CONFIG.set(cfg);
 }
 
+
 /// Picture is uninitialized.
-pub fn empty_lossless_webp_picture() -> WebPPicture {
+pub fn empty_webp_picture() -> WebPPicture {
     WebPPicture {
         use_argb: 1,
 
@@ -114,14 +115,8 @@ pub fn empty_lossless_webp_picture() -> WebPPicture {
     }
 }
 
-/// Picture is uninitialized.
-pub fn empty_lossy_webp_picture() -> WebPPicture {
-    let mut picture = empty_lossless_webp_picture();
-    picture.use_argb = 0;
-    picture
-}
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum PixelLayout {
     RGB,
     RGBA,
@@ -175,26 +170,28 @@ impl<'a>  Encoder<'a>  {
 }
 
 
+macro_rules! check_ok {
+    ( $e:expr, $msg:expr ) => {{
+        if $e == 0 {
+            panic!("{}", $msg);
+        }
+    }}
+}
+
+
 unsafe fn encode(
     image: &[u8],
     layout: PixelLayout,
     width: u32,
     height: u32,
 ) -> WebPMemory{
-
     let cfg = CONFIG.get()
         .expect("config un-initialised.")
         .clone();
 
-    let mut picture = if cfg.lossless == 1 {
-        empty_lossless_webp_picture()
-    } else {
-        empty_lossy_webp_picture()
-    };
-
-    let buffer = std::ptr::null_mut::<u8>();
+    let picture = empty_webp_picture();
     let writer = WebPMemoryWriter {
-        mem: buffer,
+        mem: std::ptr::null_mut::<u8>(),
         size: 0,
         max_size: 0,
         pad: [0]
@@ -203,25 +200,23 @@ unsafe fn encode(
     let cfg_ptr = Box::into_raw(Box::from(cfg));
     let picture_ptr = Box::into_raw(Box::from(picture));
     let writer_ptr = Box::into_raw(Box::from(writer));
-    if WebPConfigInitInternal(cfg_ptr, WEBP_PRESET_DEFAULT, cfg.quality, WEBP_ENCODER_ABI_VERSION) == 0 {
-        panic!("config init failed");
-    };
 
-    if WebPPictureInitInternal(picture_ptr, WEBP_ENCODER_ABI_VERSION) == 0 {
-        panic!("picture init failed");
-    }
+    let ok = WebPConfigInitInternal(cfg_ptr, WEBP_PRESET_DEFAULT, cfg.quality, WEBP_ENCODER_ABI_VERSION);
+    check_ok!(ok, "config init failed");
 
+    let ok = WebPPictureInitInternal(picture_ptr, WEBP_ENCODER_ABI_VERSION);
+    check_ok!(ok, "picture init failed");
 
-    WebPMemoryWriterInit(writer_ptr);
+    (*picture_ptr).use_argb = cfg.lossless;
+    (*cfg_ptr).lossless = cfg.lossless;
 
     let width = width as _;
     let height = height as _;
 
-    picture.width = width;
-    picture.height = height;
-
-    picture.writer = WebPWriterFunction::None;
-    picture.custom_ptr = writer_ptr as *mut _;
+    (*picture_ptr).width = width;
+    (*picture_ptr).height = height;
+    (*picture_ptr).custom_ptr = writer_ptr as *mut _;
+    WebPMemoryWriterInit(writer_ptr);
 
     let ok = match layout {
         PixelLayout::RGB => {
@@ -233,17 +228,17 @@ unsafe fn encode(
              WebPPictureImportRGBA(picture_ptr, image.as_ptr(), stride)
         }
     };
-    println!("{}", ok);
+    check_ok!(ok, "failed to import image");
 
     let ok = WebPEncode(cfg_ptr, picture_ptr);
-    println!("{:?}", (*picture_ptr).error_code);
     WebPPictureFree(picture_ptr);
     if ok == 0 {
         WebPMemoryWriterClear(writer_ptr);
-        panic!("fuck, memory error. at encoding.")
+        panic!("fuck, memory error. at encoding. {:?}", (*picture_ptr).error_code)
     }
 
-    WebPMemory(writer.mem, writer.size)
+    println!("{:?}", (*writer_ptr));
+    WebPMemory((*writer_ptr).mem, (*writer_ptr).size)
 }
 
 
@@ -303,6 +298,7 @@ mod tests {
         let encoder = Encoder::from_image(&image);
         let memory = encoder.encode();
         let buffer = memory.as_ref();
+        println!("{}", buffer.len());
         write("./news.webp", buffer)
             .expect("write image");
     }
@@ -317,6 +313,7 @@ mod tests {
         let encoder = Encoder::from_image(&image);
         let memory = encoder.encode();
         let buffer = memory.as_ref();
+        println!("{}", buffer.len());
         write("./release.webp", buffer)
             .expect("write image");
     }
