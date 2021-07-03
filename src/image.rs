@@ -123,12 +123,10 @@ fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, Imag
         resulting_data.insert(ImageFormat::Gif, gif);
     }
 
+    // This is the slowest conversion, maybe change??
+    // Updated: New encoder allows for multi threading encoding.
     if is_enabled!(ImageFormat::WebP, cfg.0.formats) {
-        let raw = if let Some(quality) = cfg.0.webp_quality {
-            Encoder::from_image(&im).encode(quality)
-        } else {
-            Encoder::from_image(&im).encode_lossless()
-        };
+        let raw = Encoder::from_image(&im).encode();
         let webp = BytesMut::from(raw.as_ref());
         resulting_sizes.insert(ImageFormat::WebP, webp.len());
         resulting_data.insert(ImageFormat::WebP, webp);

@@ -1,6 +1,6 @@
 [package]
 name = "lust"
-version = "1.1.0"
+version = "1.2.0"
 authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
 edition = "2018"
 documentation = "getting-started.md"
@@ -13,7 +13,7 @@ description = "A fast, auto-optimising image server designed for multiple backen
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-webp = "0.1"
+webp = { version = "*", path = "./webp" }
 image = "0.23"
 
 base64 = "0.13.0"
