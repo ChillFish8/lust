@@ -21,9 +21,9 @@ static CONFIG: OnceCell<WebPConfig> = OnceCell::new();
 ///     - method:
 ///         The quality / speed trade-off (0=fast, 6=slower-better)
 ///
-///     - threads:
-///         The amount of threads to attempt to use in multi-threaded encoding.
-pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32) {
+///     - multi_threading:
+///         If the system should to attempt to use in multi-threaded encoding.
+pub fn init_global(lossless: bool, quality: f32, method: i32, multi_threading: bool) {
     let cfg = WebPConfig {
         lossless: if lossless { 1 } else { 0 },
         quality,
@@ -46,7 +46,7 @@ pub fn init_global(lossless: bool, quality: f32, method: i32, threads: u32) {
         partitions: 0,
         partition_limit: 0,
         emulate_jpeg_size: 0,
-        thread_level: threads as i32,
+        thread_level: if multi_threading { 1 } else { 0 },
         low_memory: 0,
         near_lossless: 100,
         exact: 0,
@@ -210,6 +210,8 @@ unsafe fn encode(
 
     (*picture_ptr).use_argb = cfg.lossless;
     (*cfg_ptr).lossless = cfg.lossless;
+    (*cfg_ptr).method = cfg.method;
+    (*cfg_ptr).thread_level = cfg.thread_level;
 
     let width = width as _;
     let height = height as _;
@@ -236,7 +238,7 @@ unsafe fn encode(
     WebPPictureFree(picture_ptr);
     if ok == 0 {
         WebPMemoryWriterClear(writer_ptr);
-        panic!("fuck, memory error. at encoding. {:?}", (*picture_ptr).error_code)
+        panic!("memory error. libwebp error code: {:?}", (*picture_ptr).error_code)
     }
 
     WebPMemory((*writer_ptr).mem, (*writer_ptr).size)
@@ -284,9 +286,9 @@ mod tests {
     fn ensure_global() {
         init_global(
             true,
-            90.0,
-            3,
-            10,
+            50.0,
+            6,
+            true,
         )
     }
 
@@ -297,9 +299,10 @@ mod tests {
         ensure_global();
 
         let encoder = Encoder::from_image(&image);
+        let start = std::time::Instant::now();
         let memory = encoder.encode();
+        println!("{:?}", start.elapsed());
         let buffer = memory.as_ref();
-        println!("{}", buffer.len());
         write("./news.webp", buffer)
             .expect("write image");
     }
@@ -312,9 +315,11 @@ mod tests {
 
 
         let encoder = Encoder::from_image(&image);
+        let start = std::time::Instant::now();
         let memory = encoder.encode();
+        println!("{:?}", start.elapsed());
         let buffer = memory.as_ref();
-        println!("{}", buffer.len());
+
         write("./release.webp", buffer)
             .expect("write image");
     }
