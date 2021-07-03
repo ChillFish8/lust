@@ -179,6 +179,7 @@ macro_rules! check_ok {
 }
 
 
+
 unsafe fn encode(
     image: &[u8],
     layout: PixelLayout,
@@ -215,6 +216,7 @@ unsafe fn encode(
 
     (*picture_ptr).width = width;
     (*picture_ptr).height = height;
+    (*picture_ptr).writer = WebPWriterFunction::Some(WebPMemoryWrite);
     (*picture_ptr).custom_ptr = writer_ptr as *mut _;
     WebPMemoryWriterInit(writer_ptr);
 
@@ -237,7 +239,6 @@ unsafe fn encode(
         panic!("fuck, memory error. at encoding. {:?}", (*picture_ptr).error_code)
     }
 
-    println!("{:?}", (*writer_ptr));
     WebPMemory((*writer_ptr).mem, (*writer_ptr).size)
 }
 
