@@ -14,9 +14,9 @@ def get_base_data(file: str) -> str:
 
 def test_png_upload1():
     global working_ids
-    data = get_base_data("./samples/news.png")
+    data = get_base_data("./samples/sunset.jpeg")
     payload = {
-        "format": "png",
+        "format": "jpeg",
         "data": data,
     }
     r = requests.post("http://127.0.0.1:7070/admin/create/image", json=payload)

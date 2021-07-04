@@ -3,11 +3,12 @@ use bytes::{BufMut, BytesMut};
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
 use hashbrown::HashMap;
-use log::error;
+use log::{error, debug};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webp::Encoder;
 use std::sync::Arc;
+use std::time::Instant;
 
 use image::imageops;
 use image::{load_from_memory_with_format, DynamicImage};
@@ -62,7 +63,9 @@ macro_rules! convert {
         || -> anyhow::Result<BytesMut> {
             let buff = BytesMut::new();
             let mut writer = buff.writer();
+            let start = Instant::now;
             $e.write_to(&mut writer, $d)?;
+            debug!("format {:?} conversion took {:?}", $d, start.elapsed());
             Ok(writer.into_inner())
         }()
     }};
@@ -147,7 +150,9 @@ async fn convert_image(img: Arc<DynamicImage>, cfg: StateConfig) -> Result<(Imag
     if is_enabled!(ImageFormat::WebP, cfg.0.formats) {
         let cloned = img.clone();
         let handle = tokio::task::spawn_blocking(move || -> Result<(ImageFormat, BytesMut)> {
+            let start = Instant::now();
             let raw = Encoder::from_image(cloned.as_ref()).encode();
+            debug!("format {:?} conversion took {:?}", image::ImageFormat::WebP, start.elapsed());
             let webp = BytesMut::from(raw.as_ref());
 
             Ok((ImageFormat::WebP, webp))
