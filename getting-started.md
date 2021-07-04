@@ -44,6 +44,9 @@ Lust comes with several configurable controls which may seem confusing to some a
 - `port` -> The binding port e.g. `7070`.
 - `size_presets` -> A set of maps defining seperate size presets which will auto resize images (See the size presets configuration section bellow.)
 - `webp_ratio` -> The ratio of **lossy compression** for webp images from `0.0` to `100.0` inclusive for minimal and maximal quality respectively. This can be set to `null` to put the encoder into **lossless compression** mode.
+- `webp_compression ` -> with lossless encoding is the ratio of compression to speed. If using lossy encoding this does nothing - (float: 0.0 - 100.0 inclusive).
+- `webp_method` -> The quality/speed trade-off (0=fast, 6=slower-better)
+- `webp_threading` -> A bool singling if multi-threading encoding should be attempted.
 
 ### Database Configuration
 Lust supports any of the following backends:
