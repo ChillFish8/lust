@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter, Error};
 use std::ops::{Deref, DerefMut};
 
-use image::DynamicImage;
+use image::{DynamicImage, GenericImageView, RgbaImage};
 use once_cell::sync::OnceCell;
 
 use libwebp_sys::*;
@@ -116,12 +116,13 @@ pub fn empty_webp_picture() -> WebPPicture {
 }
 
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum PixelLayout {
     RGB,
     RGBA,
     BGR,
     BGRA,
+    Other(RgbaImage),
 }
 
 pub struct Encoder<'a>  {
@@ -159,11 +160,12 @@ impl<'a>  Encoder<'a>  {
                     image.height(),
                 ),
             other => {
-                let image = other.to_rgb8();
-                Self::from_bgra(
-                    image.as_ref(),
-                    image.width(),
-                    image.height(),
+                let image = other.to_rgba8();
+                Self::from_other(
+                    other.as_bytes(),
+                    other.width(),
+                    other.height(),
+                    image,
                 )
             }
         }
@@ -189,9 +191,21 @@ impl<'a>  Encoder<'a>  {
         Self { image, width, height, layout: PixelLayout::BGRA }
     }
 
+    /// Creates a new encoder from the given image data in the Other layout,
+    /// this creates a copy of the data to convert it to RGBA.
+    pub fn from_other(image: &'a [u8], width: u32, height: u32, other: RgbaImage) -> Self {
+        Self { image, width, height, layout: PixelLayout::Other(other) }
+    }
+
     /// Encode the image with the given global config.
     pub fn encode(&self) -> WebPMemory {
-        unsafe { encode(self.image, self.layout, self.width, self.height) }
+        let (img, layout) = if let PixelLayout::Other(img) = &self.layout {
+            (img.as_ref(), &PixelLayout::RGBA)
+        } else {
+            (self.image.as_ref(), &self.layout)
+        };
+
+        unsafe { encode(img, layout, self.width, self.height) }
     }
 }
 
@@ -208,7 +222,7 @@ macro_rules! check_ok {
 
 unsafe fn encode(
     image: &[u8],
-    layout: PixelLayout,
+    layout: &PixelLayout,
     width: u32,
     height: u32,
 ) -> WebPMemory{
@@ -266,6 +280,7 @@ unsafe fn encode(
              let stride = width * 4;
              WebPPictureImportBGRA(picture_ptr, image.as_ptr(), stride)
         }
+        _ => unreachable!()
     };
     check_ok!(ok, "failed to import image");
 
