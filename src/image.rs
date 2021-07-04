@@ -63,7 +63,7 @@ macro_rules! convert {
         || -> anyhow::Result<BytesMut> {
             let buff = BytesMut::new();
             let mut writer = buff.writer();
-            let start = Instant::now;
+            let start = Instant::now();
             $e.write_to(&mut writer, $d)?;
             debug!("format {:?} conversion took {:?}", $d, start.elapsed());
             Ok(writer.into_inner())
