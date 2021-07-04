@@ -120,6 +120,8 @@ pub fn empty_webp_picture() -> WebPPicture {
 pub enum PixelLayout {
     RGB,
     RGBA,
+    BGR,
+    BGRA,
 }
 
 pub struct Encoder<'a>  {
@@ -133,22 +135,31 @@ impl<'a>  Encoder<'a>  {
     /// Creates a new encoder from the given image.
     pub fn from_image(image: &'a DynamicImage) -> Self {
         match image {
-            DynamicImage::ImageLuma8(_) => { unreachable!() }
-            DynamicImage::ImageLumaA8(_) => { unreachable!() }
+            DynamicImage::ImageLuma8(_) => unimplemented!(),
+            DynamicImage::ImageLumaA8(_) => unimplemented!(),
             DynamicImage::ImageRgb8(image) =>
                 Self::from_rgb(
                     image.as_ref(),
                     image.width(),
-                    image.height()
+                    image.height(),
                 ),
             DynamicImage::ImageRgba8(image) =>
                 Self::from_rgba(
                     image.as_ref(),
                     image.width(),
-                    image.height()
+                    image.height(),
                 ),
-            DynamicImage::ImageBgr8(_) => { unreachable!() }
-            DynamicImage::ImageBgra8(_) => { unreachable!() }
+            DynamicImage::ImageBgr8(image) =>
+                Self::from_bgr(
+                    image.as_ref(),
+                    image.width(),
+                    image.height(),
+                ),
+            DynamicImage::ImageBgra8(image) => Self::from_bgra(
+                    image.as_ref(),
+                    image.width(),
+                    image.height(),
+                ),
             _ => { unreachable!() }
         }
     }
@@ -161,6 +172,16 @@ impl<'a>  Encoder<'a>  {
     /// Creates a new encoder from the given image data in the RGBA pixel layout.
     pub fn from_rgba(image: &'a [u8], width: u32, height: u32) -> Self {
         Self { image, width, height, layout: PixelLayout::RGBA }
+    }
+
+    /// Creates a new encoder from the given image data in the BGR pixel layout.
+    pub fn from_bgr(image: &'a [u8], width: u32, height: u32) -> Self {
+        Self { image, width, height, layout: PixelLayout::BGR }
+    }
+
+    /// Creates a new encoder from the given image data in the BGRA pixel layout.
+    pub fn from_bgra(image: &'a [u8], width: u32, height: u32) -> Self {
+        Self { image, width, height, layout: PixelLayout::BGRA }
     }
 
     /// Encode the image with the given global config.
@@ -222,6 +243,7 @@ unsafe fn encode(
     (*picture_ptr).custom_ptr = writer_ptr as *mut _;
     WebPMemoryWriterInit(writer_ptr);
 
+
     let ok = match layout {
         PixelLayout::RGB => {
              let stride = width * 3;
@@ -230,6 +252,14 @@ unsafe fn encode(
         PixelLayout::RGBA => {
              let stride = width * 4;
              WebPPictureImportRGBA(picture_ptr, image.as_ptr(), stride)
+        },
+        PixelLayout::BGR => {
+             let stride = width * 3;
+             WebPPictureImportBGR(picture_ptr, image.as_ptr(), stride)
+        }
+        PixelLayout::BGRA => {
+             let stride = width * 4;
+             WebPPictureImportBGRA(picture_ptr, image.as_ptr(), stride)
         }
     };
     check_ok!(ok, "failed to import image");
