@@ -1,4 +1,4 @@
-FROM ekidd/rust-musl-builder as builder
+FROM ekidd/rust-musl-builder:stable as builder
 
 WORKDIR /home/rust/
 

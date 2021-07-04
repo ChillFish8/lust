@@ -3,10 +3,12 @@ use bytes::{BufMut, BytesMut};
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
 use hashbrown::HashMap;
-use log::error;
+use log::{error, debug};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webp::Encoder;
+use std::sync::Arc;
+use std::time::Instant;
 
 use image::imageops;
 use image::{load_from_memory_with_format, DynamicImage};
@@ -61,7 +63,9 @@ macro_rules! convert {
         || -> anyhow::Result<BytesMut> {
             let buff = BytesMut::new();
             let mut writer = buff.writer();
+            let start = Instant::now();
             $e.write_to(&mut writer, $d)?;
+            debug!("format {:?} conversion took {:?}", $d, start.elapsed());
             Ok(writer.into_inner())
         }()
     }};
@@ -69,7 +73,7 @@ macro_rules! convert {
 
 macro_rules! generate {
     ( $n:expr, $e:expr, $hm1:expr, $hm2:expr, $cfg:expr ) => ({
-        let (data, sizes) = convert_image(&$e, $cfg)?;
+        let (data, sizes) = convert_image($e, $cfg).await?;
         $hm1.insert($n.to_string(), sizes);
         $hm2.insert($n.to_string(), data);
     })
@@ -92,44 +96,74 @@ macro_rules! log_err {
     }};
 }
 
-fn convert_image(im: &DynamicImage, cfg: StateConfig) -> Result<(ImageData, ImageDataSizes)> {
+fn spawn_conversion(
+    img: Arc<DynamicImage>,
+    format: ImageFormat,
+    convert_to_format: image::ImageFormat,
+) -> Result<(ImageFormat, BytesMut)> {
+    let img: BytesMut = log_err!(
+        convert!(img, convert_to_format),
+        format!("failed to convert {:?}: ", convert_to_format)
+    )?;
+
+    return Ok((format, img))
+}
+
+async fn convert_image(img: Arc<DynamicImage>, cfg: StateConfig) -> Result<(ImageData, ImageDataSizes)> {
     let mut resulting_sizes = HashMap::with_capacity(4);
     let mut resulting_data = HashMap::with_capacity(4);
 
+    let mut handles = vec![];
+
     if is_enabled!(ImageFormat::Png, cfg.0.formats) {
-        let png: BytesMut = log_err!(
-            convert!(&im, image::ImageFormat::Png),
-            "failed to convert png: "
-        )?;
-        resulting_sizes.insert(ImageFormat::Png, png.len());
-        resulting_data.insert(ImageFormat::Png, png);
+        let cloned = img.clone();
+        let handle = tokio::task::spawn_blocking(move || spawn_conversion(
+            cloned,
+            ImageFormat::Png,
+            image::ImageFormat::Png ,
+        ));
+        handles.push(handle);
     }
 
     if is_enabled!(ImageFormat::Jpeg, cfg.0.formats) {
-        let jpeg = log_err!(
-            convert!(&im, image::ImageFormat::Jpeg),
-            "failed to convert jpeg: "
-        )?;
-        resulting_sizes.insert(ImageFormat::Jpeg, jpeg.len());
-        resulting_data.insert(ImageFormat::Jpeg, jpeg);
+        let cloned = img.clone();
+        let handle = tokio::task::spawn_blocking(move || spawn_conversion(
+            cloned,
+            ImageFormat::Jpeg,
+            image::ImageFormat::Jpeg ,
+        ));
+        handles.push(handle);
     }
 
     if is_enabled!(ImageFormat::Gif, cfg.0.formats) {
-        let gif = log_err!(
-            convert!(&im, image::ImageFormat::Gif),
-            "failed to convert gif: "
-        )?;
-        resulting_sizes.insert(ImageFormat::Gif, gif.len());
-        resulting_data.insert(ImageFormat::Gif, gif);
+        let cloned = img.clone();
+        let handle = tokio::task::spawn_blocking(move || spawn_conversion(
+            cloned,
+            ImageFormat::Gif,
+            image::ImageFormat::Gif ,
+        ));
+        handles.push(handle);
     }
 
     // This is the slowest conversion, maybe change??
     // Updated: New encoder allows for multi threading encoding.
     if is_enabled!(ImageFormat::WebP, cfg.0.formats) {
-        let raw = Encoder::from_image(&im).encode();
-        let webp = BytesMut::from(raw.as_ref());
-        resulting_sizes.insert(ImageFormat::WebP, webp.len());
-        resulting_data.insert(ImageFormat::WebP, webp);
+        let cloned = img.clone();
+        let handle = tokio::task::spawn_blocking(move || -> Result<(ImageFormat, BytesMut)> {
+            let start = Instant::now();
+            let raw = Encoder::from_image(cloned.as_ref()).encode();
+            debug!("format {:?} conversion took {:?}", image::ImageFormat::WebP, start.elapsed());
+            let webp = BytesMut::from(raw.as_ref());
+
+            Ok((ImageFormat::WebP, webp))
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        let (format, data) = handle.await??;
+        resulting_sizes.insert(format, data.len());
+        resulting_data.insert(format, data);
     }
 
     Ok((resulting_data, resulting_sizes))
@@ -154,20 +188,25 @@ pub async fn process_new_image(
     let presets = &cfg.0.size_presets;
     let mut converted_sizes = HashMap::with_capacity(presets.len());
     let mut converted_data = HashMap::with_capacity(presets.len());
-    let original = log_err!(
+    let original = Arc::from(log_err!(
         load_from_memory_with_format(&data, fmt),
         "failed to load format due to exception: "
-    )?;
+    )?);
     generate!(
         "original",
-        original,
+        original.clone(),
         converted_sizes,
         converted_data,
         cfg.clone()
     );
 
     for (preset_name, size) in presets {
-        let im = original.resize(size.width, size.height, imageops::FilterType::Nearest);
+        let cloned = original.clone();
+        let im = Arc::new(cloned.resize(
+            size.width,
+            size.height,
+            imageops::FilterType::Nearest,
+        ));
 
         generate!(
             preset_name,
