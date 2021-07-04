@@ -1,9 +1,11 @@
 name: Dockerize
 
 on:
-  release:
-    types: [published]
-
+  push:
+    branches:
+      - 'master'
+    tags:
+      - 'v*'
 jobs:      
   dockerize:
     runs-on: ubuntu-latest
