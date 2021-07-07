@@ -6,6 +6,9 @@ on:
       - 'master'
     tags:
       - 'v*'
+  create:
+    tags:
+      - '*'
 jobs:      
   dockerize:
     runs-on: ubuntu-latest
