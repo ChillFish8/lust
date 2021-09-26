@@ -19,7 +19,7 @@ use gotham::router::builder::{build_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham_derive::{StateData, StaticResponseExtender};
 
-use anyhow::Result;
+use anyhow::{Result, Error};
 use clap::{App, Arg, ArgMatches, SubCommand};
 use log::{LevelFilter, info};
 use serde::Deserialize;
@@ -144,7 +144,7 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
 
     let lossless = cfg.webp_quality.is_none();
     let quality = if lossless {
-        cfg.webp_compression.unwrap()
+        cfg.webp_compression.unwrap_or(50)
     } else {
         cfg.webp_quality.unwrap()
     };
