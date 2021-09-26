@@ -1,17 +1,16 @@
+use std::sync::Arc;
+use std::time::Instant;
+
 use anyhow::Result;
 use bytes::{BufMut, BytesMut};
 use gotham::state::{FromState, State};
 use gotham_derive::{StateData, StaticResponseExtender};
 use hashbrown::HashMap;
-use log::{error, debug};
+use image::{imageops, load_from_memory_with_format, DynamicImage};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use webp::Encoder;
-use std::sync::Arc;
-use std::time::Instant;
-
-use image::imageops;
-use image::{load_from_memory_with_format, DynamicImage};
 
 use crate::configure::StateConfig;
 use crate::storage::StorageBackend;
@@ -106,10 +105,13 @@ fn spawn_conversion(
         format!("failed to convert {:?}: ", convert_to_format)
     )?;
 
-    return Ok((format, img))
+    return Ok((format, img));
 }
 
-async fn convert_image(img: Arc<DynamicImage>, cfg: StateConfig) -> Result<(ImageData, ImageDataSizes)> {
+async fn convert_image(
+    img: Arc<DynamicImage>,
+    cfg: StateConfig,
+) -> Result<(ImageData, ImageDataSizes)> {
     let mut resulting_sizes = HashMap::with_capacity(4);
     let mut resulting_data = HashMap::with_capacity(4);
 
@@ -117,31 +119,25 @@ async fn convert_image(img: Arc<DynamicImage>, cfg: StateConfig) -> Result<(Imag
 
     if is_enabled!(ImageFormat::Png, cfg.0.formats) {
         let cloned = img.clone();
-        let handle = tokio::task::spawn_blocking(move || spawn_conversion(
-            cloned,
-            ImageFormat::Png,
-            image::ImageFormat::Png ,
-        ));
+        let handle = tokio::task::spawn_blocking(move || {
+            spawn_conversion(cloned, ImageFormat::Png, image::ImageFormat::Png)
+        });
         handles.push(handle);
     }
 
     if is_enabled!(ImageFormat::Jpeg, cfg.0.formats) {
         let cloned = img.clone();
-        let handle = tokio::task::spawn_blocking(move || spawn_conversion(
-            cloned,
-            ImageFormat::Jpeg,
-            image::ImageFormat::Jpeg ,
-        ));
+        let handle = tokio::task::spawn_blocking(move || {
+            spawn_conversion(cloned, ImageFormat::Jpeg, image::ImageFormat::Jpeg)
+        });
         handles.push(handle);
     }
 
     if is_enabled!(ImageFormat::Gif, cfg.0.formats) {
         let cloned = img.clone();
-        let handle = tokio::task::spawn_blocking(move || spawn_conversion(
-            cloned,
-            ImageFormat::Gif,
-            image::ImageFormat::Gif ,
-        ));
+        let handle = tokio::task::spawn_blocking(move || {
+            spawn_conversion(cloned, ImageFormat::Gif, image::ImageFormat::Gif)
+        });
         handles.push(handle);
     }
 
@@ -152,7 +148,11 @@ async fn convert_image(img: Arc<DynamicImage>, cfg: StateConfig) -> Result<(Imag
         let handle = tokio::task::spawn_blocking(move || -> Result<(ImageFormat, BytesMut)> {
             let start = Instant::now();
             let raw = Encoder::from_image(cloned.as_ref()).encode();
-            debug!("format {:?} conversion took {:?}", image::ImageFormat::WebP, start.elapsed());
+            debug!(
+                "format {:?} conversion took {:?}",
+                image::ImageFormat::WebP,
+                start.elapsed()
+            );
             let webp = BytesMut::from(raw.as_ref());
 
             Ok((ImageFormat::WebP, webp))
@@ -202,11 +202,7 @@ pub async fn process_new_image(
 
     for (preset_name, size) in presets {
         let cloned = original.clone();
-        let im = Arc::new(cloned.resize(
-            size.width,
-            size.height,
-            imageops::FilterType::Nearest,
-        ));
+        let im = Arc::new(cloned.resize(size.width, size.height, imageops::FilterType::Nearest));
 
         generate!(
             preset_name,

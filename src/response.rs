@@ -1,10 +1,7 @@
+use bytes::BytesMut;
 use gotham::hyper::http::{header, Response, StatusCode};
 use gotham::hyper::Body;
-
-use headers::ContentType;
-use headers::HeaderMapExt;
-
-use bytes::BytesMut;
+use headers::{ContentType, HeaderMapExt};
 use serde_json::Value;
 
 use crate::image::ImageFormat;

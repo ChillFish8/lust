@@ -1,14 +1,13 @@
-use scylla::query::Query;
-use scylla::statement::prepared_statement::PreparedStatement;
-use scylla::transport::session::Session;
-use scylla::{QueryResult, SessionBuilder};
-
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use hashbrown::HashMap;
 use log::{debug, info, warn};
+use scylla::query::Query;
+use scylla::statement::prepared_statement::PreparedStatement;
+use scylla::transport::session::Session;
+use scylla::{QueryResult, SessionBuilder};
 use serde::{Deserialize, Serialize};
 use serde_variant::to_variant_name;
 use uuid::Uuid;
@@ -67,7 +66,7 @@ macro_rules! log_and_convert_error {
             Err(e) => {
                 warn!("failed to execute query {:?}", e);
                 None
-            }
+            },
         }
     }};
 }
@@ -84,7 +83,7 @@ async fn get_page(
             session
                 .execute_paged(stmt, (v.to_string(),), page_state)
                 .await?
-        }
+        },
         FilterType::Category(v) => session.execute_paged(stmt, (v,), page_state).await?,
     })
 }
@@ -112,7 +111,7 @@ impl Backend {
                     "'class': 'SimpleStrategy', 'replication_factor': {}",
                     node.replication_factor,
                 )
-            }
+            },
             ReplicationClass::NetworkTopologyStrategy(mut nodes) => {
                 let mut spec = nodes
                     .drain(..)
@@ -122,7 +121,7 @@ impl Backend {
                 spec.insert(0, "'class' : 'NetworkTopologyStrategy'".to_string());
 
                 spec.join(", ")
-            }
+            },
         };
 
         let create_ks = format!(
@@ -331,15 +330,15 @@ impl ImageStore for Backend {
             FilterType::All => {
                 let qry = format!("{};", qry);
                 Query::new(qry)
-            }
+            },
             FilterType::CreationDate(_) => {
                 let qry = format!("{} WHERE insert_date = ?;", qry);
                 Query::new(qry)
-            }
+            },
             FilterType::Category(_) => {
                 let qry = format!("{} WHERE category = ?;", qry);
                 Query::new(qry)
-            }
+            },
         };
 
         query.set_page_size(PAGE_SIZE as i32);

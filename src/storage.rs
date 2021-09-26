@@ -58,27 +58,27 @@ impl ImageStore for StorageBackend {
                 acquire!(REDIS)
                     .get_image(file_id, preset, category, format)
                     .await
-            }
+            },
             Self::Cassandra => {
                 acquire!(CASSANDRA)
                     .get_image(file_id, preset, category, format)
                     .await
-            }
+            },
             Self::Postgres => {
                 acquire!(POSTGRES)
                     .get_image(file_id, preset, category, format)
                     .await
-            }
+            },
             Self::MySQL => {
                 acquire!(MYSQL)
                     .get_image(file_id, preset, category, format)
                     .await
-            }
+            },
             Self::Sqlite => {
                 acquire!(SQLITE)
                     .get_image(file_id, preset, category, format)
                     .await
-            }
+            },
         }
     }
 

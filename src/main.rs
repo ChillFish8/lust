@@ -11,6 +11,11 @@ mod traits;
 #[macro_use]
 extern crate serde_json;
 
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use anyhow::{Error, Result};
+use clap::{App, Arg, ArgMatches, SubCommand};
 use gotham::middleware::logger::SimpleLogger as GothSimpleLogger;
 use gotham::middleware::state::StateMiddleware;
 use gotham::pipeline::new_pipeline;
@@ -18,14 +23,9 @@ use gotham::pipeline::single::single_pipeline;
 use gotham::router::builder::{build_router, DefineSingleRoute, DrawRoutes};
 use gotham::router::Router;
 use gotham_derive::{StateData, StaticResponseExtender};
-
-use anyhow::{Result, Error};
-use clap::{App, Arg, ArgMatches, SubCommand};
-use log::{LevelFilter, info};
+use log::{info, LevelFilter};
 use serde::Deserialize;
 use simple_logger::SimpleLogger;
-use std::net::SocketAddr;
-use std::sync::Arc;
 use tokio::fs;
 use uuid::Uuid;
 
@@ -103,7 +103,7 @@ async fn main() -> Result<()> {
                 "command {} is not supported, only commands (init, run) are supported",
                 other,
             )))
-        }
+        },
     }?;
 
     Ok(())
@@ -155,13 +155,10 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
          Lossless: {}, \
          Quality: {}, \
          Method: {}, \
-         Threading: {}", lossless, quality, method, threading);
-    webp::init_global(
-        lossless,
-        quality,
-        method,
-        threading,
+         Threading: {}",
+        lossless, quality, method, threading
     );
+    webp::init_global(lossless, quality, method, threading);
 
     let fields: Vec<ImageFormat> = cfg
         .formats
@@ -186,31 +183,31 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
             db.ensure_tables(presets, fields).await?;
             let _ = storage::REDIS.set(db);
             StorageBackend::Redis
-        }
+        },
         DatabaseBackend::Cassandra(db_cfg) => {
             let mut db = backends::cql::Backend::connect(db_cfg).await?;
             db.ensure_tables(presets, fields).await?;
             let _ = storage::CASSANDRA.set(db);
             StorageBackend::Cassandra
-        }
+        },
         DatabaseBackend::Postgres(db_cfg) => {
             let mut db = backends::sql::PostgresBackend::connect(db_cfg).await?;
             db.ensure_tables(presets, fields).await?;
             let _ = storage::POSTGRES.set(db);
             StorageBackend::Postgres
-        }
+        },
         DatabaseBackend::MySQL(db_cfg) => {
             let mut db = backends::sql::MySQLBackend::connect(db_cfg).await?;
             db.ensure_tables(presets, fields).await?;
             let _ = storage::MYSQL.set(db);
             StorageBackend::MySQL
-        }
+        },
         DatabaseBackend::Sqlite(db_cfg) => {
             let mut db = backends::sql::SqliteBackend::connect(db_cfg).await?;
             db.ensure_tables(presets, fields).await?;
             let _ = storage::SQLITE.set(db);
             StorageBackend::Sqlite
-        }
+        },
     };
 
     let addr: SocketAddr = format!("{}:{}", &cfg.host, cfg.port).parse()?;

@@ -1,18 +1,17 @@
+use std::str::FromStr;
+
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::BytesMut;
 use chrono::Utc;
-use log::error;
-use log::{debug, info};
+use log::{debug, error, info};
 use serde::Deserialize;
 use serde_variant::to_variant_name;
-use std::str::FromStr;
-use uuid::Uuid;
-
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use sqlx::sqlite::{SqlitePool, SqlitePoolOptions};
 use sqlx::Row;
+use uuid::Uuid;
 
 use crate::configure::PAGE_SIZE;
 use crate::context::{FilterType, IndexResult, OrderBy};
@@ -74,11 +73,11 @@ macro_rules! extract_or_none {
                 let row = row?;
                 let data: &[u8] = row.get($c);
                 Some(BytesMut::from(data))
-            }
+            },
             Err(e) => {
                 error!("failed to fetch row due to error: {:?}", e);
                 None
-            }
+            },
         }
     }};
 }
@@ -203,7 +202,7 @@ macro_rules! apply_filter {
             FilterType::Category(_) => $qry = format!("{} WHERE category = {}", $qry, $placeholder),
             FilterType::CreationDate(_) => {
                 $qry = format!("{} WHERE insert_date = {}", $qry, $placeholder)
-            }
+            },
         };
     }};
 }

@@ -1,13 +1,13 @@
-use anyhow::Result;
-use async_trait::async_trait;
-use uuid::Uuid;
-use bytes::BytesMut;
-use serde::{Serialize, Deserialize};
-use log::error;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use redis::{AsyncCommands, AsyncIter};
+use anyhow::Result;
+use async_trait::async_trait;
+use bytes::BytesMut;
+use log::error;
 use redis::aio::ConnectionManager;
+use redis::{AsyncCommands, AsyncIter};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::context::{FilterType, IndexResult, OrderBy};
 use crate::image::{ImageFormat, ImagePresetsData};
@@ -18,7 +18,6 @@ pub struct RedisConfig {
     connection_uri: String,
     pool_size: usize,
 }
-
 
 struct RedisPool {
     connections: Vec<ConnectionManager>,
@@ -34,7 +33,10 @@ impl RedisPool {
             conns.push(conn);
         }
 
-        Ok(Self { connections: conns, index: AtomicUsize::new(0), })
+        Ok(Self {
+            connections: conns,
+            index: AtomicUsize::new(0),
+        })
     }
 
     pub fn get(&self) -> ConnectionManager {
@@ -51,7 +53,6 @@ impl RedisPool {
     }
 }
 
-
 pub struct Backend {
     pool: RedisPool,
 }
@@ -60,9 +61,7 @@ impl Backend {
     pub async fn connect(cfg: RedisConfig) -> Result<Self> {
         let pool = RedisPool::connect(cfg).await?;
 
-        Ok(Self {
-            pool,
-        })
+        Ok(Self { pool })
     }
 }
 
@@ -70,25 +69,34 @@ impl Backend {
 impl DatabaseLinker for Backend {
     /// Due to the nature of the key-value setup for redis clients this has completely
     /// different handling so does not do anything when this funciton is called.
-    async fn ensure_tables(&mut self, _presets: Vec<&str>, _columns: Vec<ImageFormat>) -> Result<()> {
+    async fn ensure_tables(
+        &mut self,
+        _presets: Vec<&str>,
+        _columns: Vec<ImageFormat>,
+    ) -> Result<()> {
         Ok(())
     }
 }
 
-
 #[async_trait]
 impl ImageStore for Backend {
-    async fn get_image(&self, file_id: Uuid, preset: String, category: &str, format: ImageFormat) -> Option<BytesMut> {
+    async fn get_image(
+        &self,
+        file_id: Uuid,
+        preset: String,
+        category: &str,
+        format: ImageFormat,
+    ) -> Option<BytesMut> {
         let key = format!("{:?} {} {} {:?}", file_id, preset, category, format);
         let mut conn = self.pool.get();
         let result = conn.get(&key).await;
 
         let val: Vec<u8> = match result {
-           Ok(v) => v,
-           Err(e) => {
-               error!("failed to fetch key {} from redis: {:?}", &key, e);
-               return None
-            }
+            Ok(v) => v,
+            Err(e) => {
+                error!("failed to fetch key {} from redis: {:?}", &key, e);
+                return None;
+            },
         };
 
         if val.len() == 0 {
@@ -127,7 +135,14 @@ impl ImageStore for Backend {
     }
 
     /// This is non-functional due to limitations with the key-value setup of redis.
-    async fn list_entities(&self, _filter: FilterType, _order: OrderBy, _page: usize) -> Result<Vec<IndexResult>> {
-        Err(anyhow::Error::msg("redis backend does not support listing entities"))
+    async fn list_entities(
+        &self,
+        _filter: FilterType,
+        _order: OrderBy,
+        _page: usize,
+    ) -> Result<Vec<IndexResult>> {
+        Err(anyhow::Error::msg(
+            "redis backend does not support listing entities",
+        ))
     }
 }

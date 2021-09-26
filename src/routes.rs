@@ -1,16 +1,22 @@
 use base64::{decode, encode};
-use log::{debug, error};
-
 use gotham::handler::HandlerResult;
 use gotham::hyper::http::StatusCode;
 use gotham::hyper::{body, Body};
 use gotham::state::{FromState, State};
+use log::{debug, error};
 
 use crate::cache::CACHE_STATE;
 use crate::configure::StateConfig;
 use crate::context::{FilesListPayload, FilterType, OrderBy};
-use crate::image::{delete_image, get_image, process_new_image};
-use crate::image::{ImageGet, ImageRemove, ImageUpload, ImageUploaded};
+use crate::image::{
+    delete_image,
+    get_image,
+    process_new_image,
+    ImageGet,
+    ImageRemove,
+    ImageUpload,
+    ImageUploaded,
+};
 use crate::response::{empty_response, image_response, json_response};
 use crate::storage::StorageBackend;
 use crate::traits::ImageStore;
@@ -136,7 +142,7 @@ pub async fn get_file(mut state: State) -> HandlerResult {
                 ));
             }
             Ok((state, image_response(format, data)))
-        }
+        },
     }
 }
 
@@ -168,7 +174,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
                     })),
                 ),
             ))
-        }
+        },
     };
 
     let category = upload.category.unwrap_or_else(|| "default".to_string());
@@ -185,7 +191,7 @@ pub async fn add_file(mut state: State) -> HandlerResult {
                     })),
                 ),
             ));
-        }
+        },
     };
 
     let resp = ImageUploaded {

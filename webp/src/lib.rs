@@ -1,13 +1,11 @@
-use std::fmt::{Debug, Formatter, Error};
+use std::fmt::{Debug, Error, Formatter};
 use std::ops::{Deref, DerefMut};
 
 use image::{DynamicImage, GenericImageView, RgbaImage};
-use once_cell::sync::OnceCell;
-
-use libwebp_sys::*;
 use libwebp_sys::WebPEncodingError::VP8_ENC_OK;
 use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
-
+use libwebp_sys::*;
+use once_cell::sync::OnceCell;
 
 static CONFIG: OnceCell<WebPConfig> = OnceCell::new();
 
@@ -52,12 +50,11 @@ pub fn init_global(lossless: bool, quality: f32, method: i32, multi_threading: b
         exact: 0,
         use_delta_palette: 0,
         use_sharp_yuv: 0,
-        pad: [100, 100]
+        pad: [100, 100],
     };
-    
+
     let _ = CONFIG.set(cfg);
 }
-
 
 /// Picture is uninitialized.
 pub fn empty_webp_picture() -> WebPPicture {
@@ -80,11 +77,7 @@ pub fn empty_webp_picture() -> WebPPicture {
         // ARGB input
         argb: std::ptr::null_mut(),
         argb_stride: 0,
-        pad2: [
-            0,
-            0,
-            0,
-        ],
+        pad2: [0, 0, 0],
 
         // OUTPUT
         writer: None,
@@ -115,7 +108,6 @@ pub fn empty_webp_picture() -> WebPPicture {
     }
 }
 
-
 #[derive(Clone, Debug)]
 pub enum PixelLayout {
     RGB,
@@ -125,76 +117,85 @@ pub enum PixelLayout {
     Other(RgbaImage),
 }
 
-pub struct Encoder<'a>  {
+pub struct Encoder<'a> {
     layout: PixelLayout,
     image: &'a [u8],
     width: u32,
     height: u32,
 }
 
-impl<'a>  Encoder<'a>  {
+impl<'a> Encoder<'a> {
     /// Creates a new encoder from the given image.
     pub fn from_image(image: &'a DynamicImage) -> Self {
         match image {
-            DynamicImage::ImageRgb8(image) =>
-                Self::from_rgb(
-                    image.as_ref(),
-                    image.width(),
-                    image.height(),
-                ),
-            DynamicImage::ImageRgba8(image) =>
-                Self::from_rgba(
-                    image.as_ref(),
-                    image.width(),
-                    image.height(),
-                ),
-            DynamicImage::ImageBgr8(image) =>
-                Self::from_bgr(
-                    image.as_ref(),
-                    image.width(),
-                    image.height(),
-                ),
-            DynamicImage::ImageBgra8(image) => Self::from_bgra(
-                    image.as_ref(),
-                    image.width(),
-                    image.height(),
-                ),
+            DynamicImage::ImageRgb8(image) => {
+                Self::from_rgb(image.as_ref(), image.width(), image.height())
+            },
+            DynamicImage::ImageRgba8(image) => {
+                Self::from_rgba(image.as_ref(), image.width(), image.height())
+            },
+            DynamicImage::ImageBgr8(image) => {
+                Self::from_bgr(image.as_ref(), image.width(), image.height())
+            },
+            DynamicImage::ImageBgra8(image) => {
+                Self::from_bgra(image.as_ref(), image.width(), image.height())
+            },
             other => {
                 let image = other.to_rgba8();
-                Self::from_other(
-                    other.as_bytes(),
-                    other.width(),
-                    other.height(),
-                    image,
-                )
-            }
+                Self::from_other(other.as_bytes(), other.width(), other.height(), image)
+            },
         }
     }
 
     /// Creates a new encoder from the given image data in the RGB pixel layout.
     pub fn from_rgb(image: &'a [u8], width: u32, height: u32) -> Self {
-        Self { image, width, height, layout: PixelLayout::RGB }
+        Self {
+            image,
+            width,
+            height,
+            layout: PixelLayout::RGB,
+        }
     }
 
     /// Creates a new encoder from the given image data in the RGBA pixel layout.
     pub fn from_rgba(image: &'a [u8], width: u32, height: u32) -> Self {
-        Self { image, width, height, layout: PixelLayout::RGBA }
+        Self {
+            image,
+            width,
+            height,
+            layout: PixelLayout::RGBA,
+        }
     }
 
     /// Creates a new encoder from the given image data in the BGR pixel layout.
     pub fn from_bgr(image: &'a [u8], width: u32, height: u32) -> Self {
-        Self { image, width, height, layout: PixelLayout::BGR }
+        Self {
+            image,
+            width,
+            height,
+            layout: PixelLayout::BGR,
+        }
     }
 
     /// Creates a new encoder from the given image data in the BGRA pixel layout.
     pub fn from_bgra(image: &'a [u8], width: u32, height: u32) -> Self {
-        Self { image, width, height, layout: PixelLayout::BGRA }
+        Self {
+            image,
+            width,
+            height,
+            layout: PixelLayout::BGRA,
+        }
     }
 
     /// Creates a new encoder from the given image data in the Other layout,
     /// this creates a copy of the data to convert it to RGBA.
     pub fn from_other(image: &'a [u8], width: u32, height: u32, other: RgbaImage) -> Self {
-        Self { image, width, height, layout: PixelLayout::Other(other) }
+        Self {
+            image,
+            width,
+            height,
+            layout: PixelLayout::Other(other),
+        }
     }
 
     /// Encode the image with the given global config.
@@ -209,40 +210,35 @@ impl<'a>  Encoder<'a>  {
     }
 }
 
-
 macro_rules! check_ok {
     ( $e:expr, $msg:expr ) => {{
         if $e == 0 {
             panic!("{}", $msg);
         }
-    }}
+    }};
 }
 
-
-
-unsafe fn encode(
-    image: &[u8],
-    layout: &PixelLayout,
-    width: u32,
-    height: u32,
-) -> WebPMemory{
-    let cfg = CONFIG.get()
-        .expect("config un-initialised.")
-        .clone();
+unsafe fn encode(image: &[u8], layout: &PixelLayout, width: u32, height: u32) -> WebPMemory {
+    let cfg = CONFIG.get().expect("config un-initialised.").clone();
 
     let picture = empty_webp_picture();
     let writer = WebPMemoryWriter {
         mem: std::ptr::null_mut::<u8>(),
         size: 0,
         max_size: 0,
-        pad: [0]
+        pad: [0],
     };
 
     let cfg_ptr = Box::into_raw(Box::from(cfg));
     let picture_ptr = Box::into_raw(Box::from(picture));
     let writer_ptr = Box::into_raw(Box::from(writer));
 
-    let ok = WebPConfigInitInternal(cfg_ptr, WEBP_PRESET_DEFAULT, cfg.quality, WEBP_ENCODER_ABI_VERSION);
+    let ok = WebPConfigInitInternal(
+        cfg_ptr,
+        WEBP_PRESET_DEFAULT,
+        cfg.quality,
+        WEBP_ENCODER_ABI_VERSION,
+    );
     check_ok!(ok, "config init failed");
 
     let ok = WebPPictureInitInternal(picture_ptr, WEBP_ENCODER_ABI_VERSION);
@@ -262,25 +258,24 @@ unsafe fn encode(
     (*picture_ptr).custom_ptr = writer_ptr as *mut _;
     WebPMemoryWriterInit(writer_ptr);
 
-
     let ok = match layout {
         PixelLayout::RGB => {
-             let stride = width * 3;
-             WebPPictureImportRGB(picture_ptr, image.as_ptr(), stride)
-        }
+            let stride = width * 3;
+            WebPPictureImportRGB(picture_ptr, image.as_ptr(), stride)
+        },
         PixelLayout::RGBA => {
-             let stride = width * 4;
-             WebPPictureImportRGBA(picture_ptr, image.as_ptr(), stride)
+            let stride = width * 4;
+            WebPPictureImportRGBA(picture_ptr, image.as_ptr(), stride)
         },
         PixelLayout::BGR => {
-             let stride = width * 3;
-             WebPPictureImportBGR(picture_ptr, image.as_ptr(), stride)
-        }
+            let stride = width * 3;
+            WebPPictureImportBGR(picture_ptr, image.as_ptr(), stride)
+        },
         PixelLayout::BGRA => {
-             let stride = width * 4;
-             WebPPictureImportBGRA(picture_ptr, image.as_ptr(), stride)
-        }
-        _ => unreachable!()
+            let stride = width * 4;
+            WebPPictureImportBGRA(picture_ptr, image.as_ptr(), stride)
+        },
+        _ => unreachable!(),
     };
     check_ok!(ok, "failed to import image");
 
@@ -288,12 +283,14 @@ unsafe fn encode(
     WebPPictureFree(picture_ptr);
     if ok == 0 {
         WebPMemoryWriterClear(writer_ptr);
-        panic!("memory error. libwebp error code: {:?}", (*picture_ptr).error_code)
+        panic!(
+            "memory error. libwebp error code: {:?}",
+            (*picture_ptr).error_code
+        )
     }
 
     WebPMemory((*writer_ptr).mem, (*writer_ptr).size)
 }
-
 
 /// This struct represents a safe wrapper around memory owned by libwebp.
 /// Its data contents can be accessed through the Deref and DerefMut traits.
@@ -307,9 +304,7 @@ impl Debug for WebPMemory {
 
 impl Drop for WebPMemory {
     fn drop(&mut self) {
-        unsafe {
-            WebPFree(self.0 as _)
-        }
+        unsafe { WebPFree(self.0 as _) }
     }
 }
 
@@ -327,25 +322,19 @@ impl DerefMut for WebPMemory {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs::write;
 
+    use super::*;
+
     fn ensure_global() {
-        init_global(
-            true,
-            50.0,
-            6,
-            true,
-        )
+        init_global(true, 50.0, 6, true)
     }
 
     #[test]
     fn test_basic_sample_1() {
-        let image = image::open("./test_samples/news.png")
-            .expect("load image");
+        let image = image::open("./test_samples/news.png").expect("load image");
         ensure_global();
 
         let encoder = Encoder::from_image(&image);
@@ -353,16 +342,13 @@ mod tests {
         let memory = encoder.encode();
         println!("{:?}", start.elapsed());
         let buffer = memory.as_ref();
-        write("./news.webp", buffer)
-            .expect("write image");
+        write("./news.webp", buffer).expect("write image");
     }
 
     #[test]
     fn test_basic_sample_2() {
-        let image = image::open("./test_samples/release.png")
-            .expect("load image");
+        let image = image::open("./test_samples/release.png").expect("load image");
         ensure_global();
-
 
         let encoder = Encoder::from_image(&image);
         let start = std::time::Instant::now();
@@ -370,7 +356,6 @@ mod tests {
         println!("{:?}", start.elapsed());
         let buffer = memory.as_ref();
 
-        write("./release.webp", buffer)
-            .expect("write image");
+        write("./release.webp", buffer).expect("write image");
     }
 }

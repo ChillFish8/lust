@@ -1,7 +1,8 @@
+use std::sync::Arc;
+
 use bytes::BytesMut;
 use concread::arcache::ARCache;
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::image::ImageFormat;

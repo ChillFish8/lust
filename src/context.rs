@@ -1,8 +1,6 @@
-use chrono::DateTime;
-use chrono::Utc;
-use uuid::Uuid;
-
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// A set of filters that can be used to view
 /// entities via the REST API on the admin panel.
