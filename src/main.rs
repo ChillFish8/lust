@@ -144,7 +144,7 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
 
     let lossless = cfg.webp_quality.is_none();
     let quality = if lossless {
-        cfg.webp_compression.unwrap_or(50)
+        cfg.webp_compression.unwrap_or(50f32)
     } else {
         cfg.webp_quality.unwrap()
     };
