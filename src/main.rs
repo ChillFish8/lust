@@ -14,7 +14,7 @@ extern crate serde_json;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::{Error, Result};
+use anyhow::Result;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use gotham::middleware::logger::SimpleLogger as GothSimpleLogger;
 use gotham::middleware::state::StateMiddleware;
