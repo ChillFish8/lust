@@ -25,7 +25,6 @@ use gotham::router::Router;
 use gotham_derive::{StateData, StaticResponseExtender};
 use log::{info, LevelFilter};
 use serde::Deserialize;
-use simple_logger::SimpleLogger;
 use tokio::fs;
 use uuid::Uuid;
 
@@ -135,12 +134,11 @@ async fn run_server(args: &ArgMatches<'_>) -> Result<()> {
         LogLevel::Error => (LevelFilter::Error, LevelFilter::Error),
     };
 
-    SimpleLogger::new()
-        .with_level(LevelFilter::Off)
-        .with_module_level("lust", lust_lvl)
-        .with_module_level("gotham", goth_lvl)
-        .init()
-        .unwrap();
+    if std::env::var_os("RUST_LOG").is_none() {
+        std::env::set_var("RUST_LOG", format!("warn,lust={},gotham={}", lust_lvl, goth_lvl));
+    }
+
+    pretty_env_logger::init();
 
     let lossless = cfg.webp_quality.is_none();
     let quality = if lossless {
