@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use bytes::BytesMut;
-use concread::arcache::ARCache;
+use concread::arcache::{ARCache, ARCacheBuilder};
 use once_cell::sync::OnceCell;
 use uuid::Uuid;
 
@@ -26,7 +26,11 @@ impl CacheState {
         let inst = if cache_size == 0 {
             Self { 0: None }
         } else {
-            let store = Arc::new(ARCache::new_size(cache_size, 12));
+            let store = Arc::new(ARCacheBuilder::new()
+                .set_size(cache_size, 12)
+                .build()
+                .unwrap()
+            );
             Self { 0: Some(store) }
         };
 
@@ -37,7 +41,7 @@ impl CacheState {
     pub fn get(&self, file_id: Uuid, preset: String, format: ImageFormat) -> Option<BytesMut> {
         let state = self.0.as_ref()?;
         let ref_val = (file_id, preset, format);
-        let target = state.read();
+        let mut target = state.read();
         target.get(&ref_val).map(|v| v.clone())
     }
 
