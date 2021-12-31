@@ -1,4 +1,4 @@
-FROM ekidd/rust-musl-builder:stable as builder
+FROM chillfish8/rust-builder:latest as builder
 
 WORKDIR /home/rust/
 
