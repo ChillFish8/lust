@@ -1,18 +1,15 @@
-FROM ekidd/rust-musl-builder:stable as builder
+FROM rust:slim-buster as build
 
-WORKDIR /home/rust/
+WORKDIR /code
 
-# Avoid having to install/build all dependencies by copying
-# the Cargo files and making a dummy src/main.rs
-COPY . .
+COPY . /code
+
 RUN cargo build --release
 
-# Size optimization
-RUN strip target/x86_64-unknown-linux-musl/release/lust
+# Copy the binary into a new container for a smaller docker image
+FROM debian:buster-slim
 
-# Start building the final image
-FROM scratch
-WORKDIR /etc/lust
+COPY --from=build /code/target/release/lust /
+USER root
 
-COPY --from=builder /home/rust/target/x86_64-unknown-linux-musl/release/lust .
 ENTRYPOINT ["./lust", "run"]
