@@ -60,7 +60,7 @@ pub struct RuntimeConfig {
     /// A set of bucket configs.
     ///
     /// Each bucket represents a category.
-    pub buckets: Vec<BucketConfig>,
+    pub buckets: HashMap<String, BucketConfig>,
 
     /// The base path to serve images from.
     ///
@@ -86,7 +86,7 @@ pub struct CacheConfig {
     /// If both entries are `None` then the item is not cached.
     pub max_images: Option<u16>,
 
-    /// The maximum amount of memory (approximately).
+    /// The maximum amount of memory (approximately) in MB.
     ///
     /// If set to `None` then this will fall back to
     /// number of entries based caching.
@@ -191,8 +191,9 @@ pub struct WebpConfig {
     /// The quality/speed trade-off (0=fast, 6=slower-better)
     pub method: Option<u8>,
 
+    #[serde(default)]
     /// A bool singling if multi-threading encoding should be attempted.
-    pub threading: Option<bool>,
+    pub threading: bool,
 }
 
 #[derive(Debug, Default, Deserialize)]
