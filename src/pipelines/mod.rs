@@ -1,4 +1,5 @@
 use std::time::{Duration, Instant};
+use serde::Deserialize;
 use crate::config::ImageKind;
 
 pub mod realtime;
@@ -6,8 +7,43 @@ pub mod aot;
 pub mod jit;
 mod register;
 
-pub use register::Pipeline;
+pub use register::{Pipeline, PipelineSelector};
 
+#[derive(Copy, Clone, Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ProcessingMode {
+    /// Images will be optimised and resized when they're
+    /// requested and then stored.
+    Jit,
+
+    /// Images have all optimizations and resizing applied to them
+    /// and stored at upload time.
+    Aot,
+
+    /// Only the original image will be stored, any optimisations will always
+    /// be ran at request time and not stored.
+    Realtime,
+}
+
+impl Default for ProcessingMode {
+    fn default() -> Self {
+        Self::Jit
+    }
+}
+
+impl ProcessingMode {
+    pub fn build_pipeline(&self) -> PipelineController {
+        let selector = match self {
+            Self::Jit => PipelineSelector::from(jit::JustInTimePipeline {}),
+            Self::Aot => PipelineSelector::from(aot::AheadOfTimePipeline {}),
+            Self::Realtime => PipelineSelector::from(realtime::RealtimePipeline {}),
+        };
+
+        PipelineController {
+            inner: selector,
+        }
+    }
+}
 
 pub struct ExecutionResult {
     /// The result of a given pipeline after a given operation.

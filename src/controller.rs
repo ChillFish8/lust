@@ -1,9 +1,11 @@
+use std::sync::Arc;
 use uuid::Uuid;
 use poem_openapi::Object;
 
 use crate::config::{BucketConfig, ImageKind};
 use crate::pipelines::PipelineController;
 use crate::storage::template::StorageBackend;
+
 
 #[derive(Object, Debug)]
 pub struct UploadInfo {
@@ -22,14 +24,14 @@ pub struct UploadInfo {
 pub struct BucketController {
     config: BucketConfig,
     pipeline: PipelineController,
-    storage: Box<dyn StorageBackend>,
+    storage: Arc<dyn StorageBackend>,
 }
 
 impl BucketController {
     pub fn new(
         config: BucketConfig,
         pipeline: PipelineController,
-        storage: Box<dyn StorageBackend>,
+        storage: Arc<dyn StorageBackend>,
     ) -> Self {
         Self {
             config,

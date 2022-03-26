@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
+use crate::pipelines::ProcessingMode;
 
 use crate::storage::backends::BackendConfigs;
 
@@ -30,27 +31,7 @@ pub async fn init(config_file: &Path) -> Result<()> {
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ProcessingMode {
-    /// Images will be optimised and resized when they're
-    /// requested and then stored.
-    Jit,
 
-    /// Images have all optimizations and resizing applied to them
-    /// and stored at upload time.
-    Aot,
-
-    /// Only the original image will be stored, any optimisations will always
-    /// be ran at request time and not stored.
-    Realtime,
-}
-
-impl Default for ProcessingMode {
-    fn default() -> Self {
-        Self::Jit
-    }
-}
 
 #[derive(Debug, Deserialize)]
 pub struct RuntimeConfig {
@@ -91,7 +72,7 @@ impl RuntimeConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct CacheConfig {
     /// The maximum amount of images to cache.
     ///
@@ -110,7 +91,7 @@ pub struct CacheConfig {
     pub max_capacity: Option<u32>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct BucketConfig {
     #[serde(default)]
     /// The processing mode for the given bucket.
@@ -147,7 +128,7 @@ pub struct BucketConfig {
 }
 
 
-#[derive(Debug, Deserialize, strum::AsRefStr)]
+#[derive(Copy, Clone, Debug, Deserialize, strum::AsRefStr)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageKind {
     Png,
@@ -157,7 +138,7 @@ pub enum ImageKind {
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ImageFormats {
     #[serde(default = "default_true")]
     /// Enable PNG re-encoding.
@@ -194,7 +175,7 @@ pub struct ImageFormats {
     pub webp_config: WebpConfig,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
 pub struct WebpConfig {
     /// The ratio of lossy compression for webp images
     /// from 0.0 to 100.0 inclusive for minimal and maximal quality respectively.
@@ -214,7 +195,7 @@ pub struct WebpConfig {
     pub threading: bool,
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, Deserialize)]
 pub struct ResizingConfig {
     /// The width to resize the image to.
     pub width: u16,

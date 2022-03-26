@@ -5,6 +5,7 @@ mod pipelines;
 mod controller;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use clap::Parser;
@@ -13,6 +14,8 @@ use poem::listener::TcpListener;
 use poem::{Endpoint, EndpointExt, IntoResponse, Request, Response, Route, Server};
 use poem_openapi::OpenApiService;
 use tracing::Level;
+use crate::controller::BucketController;
+use crate::storage::template::StorageBackend;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -58,9 +61,26 @@ async fn main() -> Result<()> {
 
     config::init(&args.config_file).await?;
 
-    let api = routes::LustApi {
-        buckets: todo!()
-    };
+    let storage: Arc<dyn StorageBackend> = config::config()
+        .backend
+        .connect()
+        .await?;
+
+    let buckets = config::config()
+        .buckets
+        .iter()
+        .map(|(bucket, cfg)| {
+            let pipeline = cfg.mode.build_pipeline();
+            let controller = BucketController::new(
+                cfg.clone(),
+                pipeline,
+                storage.clone(),
+            );
+            (bucket.to_string(), controller)
+        })
+        .collect();
+
+    let api = routes::LustApi { buckets };
 
     let api_service = OpenApiService::new(
         api,
