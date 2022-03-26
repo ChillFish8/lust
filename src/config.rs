@@ -34,8 +34,39 @@ pub struct RuntimeConfig {
     ///
     /// Each bucket represents a category.
     pub buckets: Vec<BucketConfig>,
+
+    /// The base path to serve images from.
+    ///
+    /// Defaults to `/images`.
+    pub base_serving_path: String,
+
+    /// The global cache handler.
+    ///
+    /// This will be the fallback handler if any buckets are not
+    /// assigned a dedicated cache config.
+    ///
+    /// If this is `None` then no caching is performed.
+    pub global_cache: Option<CacheConfig>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct CacheConfig {
+    /// The maximum amount of images to cache.
+    ///
+    /// If set to `None` then this will fall back to capacity
+    /// based caching.
+    ///
+    /// If both entries are `None` then the item is not cached.
+    pub max_images: Option<u16>,
+
+    /// The maximum amount of memory (approximately).
+    ///
+    /// If set to `None` then this will fall back to
+    /// number of entries based caching.
+    ///
+    /// If both entries are `None` then the item is not cached.
+    pub max_capacity: Option<u32>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct BucketConfig {
@@ -48,10 +79,36 @@ pub struct BucketConfig {
     /// The given image format optimisation config.
     pub formats: Formats,
 
+    /// The default format to serve images as.
+    ///
+    /// Defaults to the first enabled encoding format.
+    pub default_serving_format: Option<ServingFormat>,
+
+    #[serde(default = "default_preset")]
+    /// The default resizing preset to serve images as.
+    ///
+    /// Defaults to "original".
+    pub default_serving_preset: String,
+
     #[serde(default)]
     /// A set of resizing presets, this allows resizing dimensions to be accessed
     /// via a name. E.g. "small", "medium", "large", etc...
     pub presets: HashMap<String, ResizingConfig>,
+
+    /// A local cache config.
+    ///
+    /// If `None` this will use the global handler.
+    pub cache: Option<CacheConfig>,
+}
+
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ServingFormat {
+    Png,
+    Jpeg,
+    Webp,
+    Gif,
 }
 
 
@@ -122,4 +179,8 @@ pub struct ResizingConfig {
 
 const fn default_true() -> bool {
     true
+}
+
+const fn default_preset() -> &'static str {
+    "original"
 }
