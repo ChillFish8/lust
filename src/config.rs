@@ -1,7 +1,34 @@
 use std::collections::HashMap;
+use std::path::Path;
+use anyhow::{anyhow, Result};
+use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
 use crate::storage::backends::BackendConfigs;
+
+static CONFIG: OnceCell<RuntimeConfig> = OnceCell::new();
+
+pub fn config() -> &'static RuntimeConfig {
+    CONFIG.get().expect("config init")
+}
+
+pub async fn init(config_file: &Path) -> Result<()> {
+    let file = tokio::fs::read(config_file).await?;
+
+    if let Some(ext) = config_file.extension() {
+        let ext = ext.to_string_lossy().to_string();
+        let cfg: RuntimeConfig = match ext.as_str() {
+            "json" => serde_json::from_slice(&file)?,
+            "yaml" => serde_yaml::from_slice(&file)?,
+            _ => return Err(anyhow!("Config file must have an extension of either `.json` or `.yaml`"))
+        };
+
+        let _ = CONFIG.set(cfg);
+        Ok(())
+    } else {
+        Err(anyhow!("Config file must have an extension of either `.json` or `.yaml`"))
+    }
+}
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -181,6 +208,6 @@ const fn default_true() -> bool {
     true
 }
 
-const fn default_preset() -> &'static str {
-    "original"
+fn default_preset() -> String {
+    String::from("original")
 }

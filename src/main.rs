@@ -2,6 +2,7 @@ mod config;
 mod storage;
 mod routes;
 
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use anyhow::Result;
 use clap::Parser;
@@ -32,6 +33,12 @@ pub struct ServerConfig {
 
     #[clap(long, env, default_value = "info")]
     log_level: Level,
+
+    #[clap(long, env)]
+    /// The file path to a given config file.
+    ///
+    /// This can be either a JSON formatted config or YAML.
+    config_file: PathBuf,
 }
 
 
@@ -46,6 +53,8 @@ async fn main() -> Result<()> {
         );
     }
     tracing_subscriber::fmt::init();
+
+    config::init(&args.config_file).await?;
 
     let api_service = OpenApiService::new(
         routes::LustApi,
