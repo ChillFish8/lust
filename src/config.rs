@@ -74,6 +74,21 @@ pub struct RuntimeConfig {
     ///
     /// If this is `None` then no caching is performed.
     pub global_cache: Option<CacheConfig>,
+
+    /// The *global* max upload size allowed for this bucket in MB.
+    ///
+    /// This takes precedence over bucket level limits.
+    pub max_upload_size: Option<usize>,
+}
+
+impl RuntimeConfig {
+    #[inline]
+    pub fn valid_global_size(&self, size: usize) -> bool {
+        self
+            .max_upload_size
+            .map(|limit| size <= limit)
+            .unwrap_or(false)
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -104,12 +119,12 @@ pub struct BucketConfig {
     pub mode: ProcessingMode,
 
     /// The given image format optimisation config.
-    pub formats: Formats,
+    pub formats: ImageFormats,
 
     /// The default format to serve images as.
     ///
     /// Defaults to the first enabled encoding format.
-    pub default_serving_format: Option<ServingFormat>,
+    pub default_serving_format: Option<ImageKind>,
 
     #[serde(default = "default_preset")]
     /// The default resizing preset to serve images as.
@@ -126,12 +141,15 @@ pub struct BucketConfig {
     ///
     /// If `None` this will use the global handler.
     pub cache: Option<CacheConfig>,
+
+    /// The max upload size allowed for this bucket in MB.
+    pub max_upload_size: Option<u32>,
 }
 
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, strum::AsRefStr)]
 #[serde(rename_all = "lowercase")]
-pub enum ServingFormat {
+pub enum ImageKind {
     Png,
     Jpeg,
     Webp,
@@ -140,7 +158,7 @@ pub enum ServingFormat {
 
 
 #[derive(Debug, Deserialize)]
-pub struct Formats {
+pub struct ImageFormats {
     #[serde(default = "default_true")]
     /// Enable PNG re-encoding.
     ///

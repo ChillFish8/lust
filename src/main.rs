@@ -1,6 +1,8 @@
 mod config;
 mod storage;
 mod routes;
+mod pipelines;
+mod controller;
 
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -56,8 +58,12 @@ async fn main() -> Result<()> {
 
     config::init(&args.config_file).await?;
 
+    let api = routes::LustApi {
+        buckets: todo!()
+    };
+
     let api_service = OpenApiService::new(
-        routes::LustApi,
+        api,
          "Lust API",
         env!("CARGO_PKG_VERSION"),
     )
