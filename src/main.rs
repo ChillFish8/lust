@@ -29,9 +29,12 @@ extern crate tracing;
 
 #[derive(Debug, Parser)]
 pub struct ServerConfig {
-    #[clap(short, long, env, default_value = "127.0.0.1:8000")]
-    /// The binding address of the server.
-    bind: String,
+    #[clap(short, long, env, default_value = "127.0.0.1")]
+    /// The binding host address of the server.
+    host: String,
+
+    #[clap(short, long, env, default_value = "8000")]
+    port: u16,
 
     #[clap(short, long, env)]
     /// The external URL that would be used to access the server if applicable.
@@ -53,6 +56,7 @@ pub struct ServerConfig {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args: ServerConfig = ServerConfig::parse();
+    let bind = format!("{}:{}", args.host, args.port);
 
     if std::env::var_os("RUST_LOG").is_none() {
         std::env::set_var(
@@ -99,7 +103,7 @@ async fn main() -> Result<()> {
         env!("CARGO_PKG_VERSION"),
     )
     .description(include_str!("../description.md"))
-    .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1", args.bind)));
+    .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1", &bind)));
 
     let ui = api_service.redoc();
     let spec = api_service.spec();
@@ -113,16 +117,16 @@ async fn main() -> Result<()> {
     info!("Lust has started!");
     info!(
         "serving requests @ http://{}",
-        &args.bind,
+        &bind,
     );
     info!("GitHub: https://github.com/chillfish8/lust");
     info!("To ask questions visit: https://github.com/chillfish8/lust/discussions");
     info!(
         "To get started you can check out the documentation @ http://{}/ui",
-        &args.bind,
+        &bind,
     );
 
-    Server::new(TcpListener::bind(args.bind))
+    Server::new(TcpListener::bind(&bind))
         .run_with_graceful_shutdown(
             app,
             async move {
