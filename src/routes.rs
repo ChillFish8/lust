@@ -29,6 +29,11 @@ pub enum UploadResponse {
     #[oai(status = 404)]
     NotFound,
 
+    /// The image format was incorrect or the system was
+    /// unable to guess the format of the image.
+    #[oai(status = 400)]
+    InvalidImageFormat,
+
     /// The upload exceeds the configured maximum file size.
     #[oai(status = 413)]
     TooBig,
@@ -127,7 +132,7 @@ impl LustApi {
 
         /// The total size of the image in bytes.
         #[oai(name = "content-length")] content_length: Header<usize>,
-        format: Query<ImageKind>,
+        format: Query<Option<ImageKind>>,
 
         /// The raw binary data of the image.
         file: Binary<Body>,
@@ -164,7 +169,26 @@ impl LustApi {
             }
         }
 
-        let info = bucket.upload(format.0, allocated_image).await?;
+        let format = if let Some(format) = format.0 {
+            let validate = image::load_from_memory_with_format(&allocated_image, format.into());
+            if let Err(_) = validate {
+                return Ok(UploadResponse::InvalidImageFormat)
+            }
+
+            format
+        } else {
+            let maybe_guessed = image::guess_format(&allocated_image)
+                .map(ImageKind::from_guessed_format)
+                .map_err(anyhow::Error::from)?;
+
+            if let Some(guessed) = maybe_guessed {
+                guessed
+            } else {
+                return Ok(UploadResponse::InvalidImageFormat)
+            }
+        };
+
+        let info = bucket.upload(format, allocated_image).await?;
         Ok(UploadResponse::Ok(Json(info)))
     }
 

@@ -16,10 +16,6 @@ pub fn init_buckets(buckets: hashbrown::HashMap<u32, BucketController>) {
     let _ = BUCKETS.set(buckets);
 }
 
-pub fn buckets() -> &'static hashbrown::HashMap<u32, BucketController> {
-    BUCKETS.get_or_init(hashbrown::HashMap::new)
-}
-
 pub fn get_bucket_by_id(bucket_id: u32) -> Option<&'static BucketController> {
     BUCKETS.get_or_init(hashbrown::HashMap::new).get(&bucket_id)
 }

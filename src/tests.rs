@@ -1,13 +1,48 @@
-use poem::{IntoEndpoint, Route};
+use std::sync::Arc;
+use poem::Route;
+use poem::http::StatusCode;
 use poem_openapi::OpenApiService;
 use poem::test::TestClient;
+use poem::web::headers;
+use tokio::sync::Semaphore;
 
-use crate::ServerConfig;
+use crate::{BucketController, config, controller, StorageBackend};
 
 const EXAMPLE_CONFIG: &str = include_str!("../examples/example.yaml");
-const TEST_IMAGE: &[u8] = include_bytes!()
+const TEST_IMAGE: &[u8] = include_bytes!("../examples/example.jpeg");
 
-fn setup_environment() -> TestClient<Route> {
+async fn setup_environment() -> anyhow::Result<TestClient<Route>> {
+    config::init_test(EXAMPLE_CONFIG)?;
+
+    let global_limiter = config::config()
+        .max_concurrency
+        .map(Semaphore::new)
+        .map(Arc::new);
+
+    let storage: Arc<dyn StorageBackend> = config::config()
+        .backend
+        .connect()
+        .await?;
+
+    let buckets = config::config()
+        .buckets
+        .iter()
+        .map(|(bucket, cfg)| {
+            let bucket_id = crate::utils::crc_hash(bucket);
+            let pipeline = cfg.mode.build_pipeline(cfg);
+            let controller = BucketController::new(
+                bucket_id,
+                global_limiter.clone(),
+                cfg.clone(),
+                pipeline,
+                storage.clone(),
+            );
+            (bucket_id, controller)
+        })
+        .collect();
+
+    controller::init_buckets(buckets);
+
     let app = OpenApiService::new(
         crate::routes::LustApi,
         "Lust API",
@@ -15,41 +50,54 @@ fn setup_environment() -> TestClient<Route> {
     );
 
     let app = Route::new().nest("/v1", app);
-    TestClient::new(app)
+    Ok(TestClient::new(app))
 }
 
 
 #[tokio::test]
 async fn test_basic_aot_upload_retrieval() -> anyhow::Result<()> {
-    crate::config::init_test(EXAMPLE_CONFIG)?;
-    let app = setup_environment();
+    let app = setup_environment().await?;
 
-    app.post("/v1/user-profiles")
-        .body()
+    let res = app.post("/v1/user-profiles")
+        .body(TEST_IMAGE)
+        .content_type("application/octet-stream".to_string())
+        .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
+        .query("format".to_string(), &"jpeg".to_string())
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::OK);
+
+    // let res = app.post("/v1/user-profiles")
+    //     .body(TEST_IMAGE)
+    //     .content_type("application/octet-stream".to_string())
+    //     .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
+    //     .query("format".to_string(), &"jpeg".to_string())
+    //     .send()
+    //     .await;
+    //
+    // res.assert_status(StatusCode::OK);
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_basic_jit_upload_retrieval() -> anyhow::Result<()> {
-    crate::config::init_test(EXAMPLE_CONFIG)?;
-    let app = setup_environment();
+    let app = setup_environment().await?;
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_basic_realtime_upload_retrieval() -> anyhow::Result<()> {
-    crate::config::init_test(EXAMPLE_CONFIG)?;
-    let app = setup_environment();
+    let app = setup_environment().await?;
 
     Ok(())
 }
 
 #[tokio::test]
 async fn test_realtime_resizing() -> anyhow::Result<()> {
-    crate::config::init_test(EXAMPLE_CONFIG)?;
-    let app = setup_environment();
+    let app = setup_environment().await?;
 
     Ok(())
 }

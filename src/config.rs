@@ -19,6 +19,7 @@ pub fn config() -> &'static RuntimeConfig {
 #[cfg(test)]
 pub fn init_test(data: &str) -> Result<()> {
     let cfg: RuntimeConfig = serde_yaml::from_str(data)?;
+    dbg!(&cfg);
     let _ = CONFIG.set(cfg);
     Ok(())
 }
@@ -84,7 +85,7 @@ impl RuntimeConfig {
         self
             .max_upload_size
             .map(|limit| size <= limit)
-            .unwrap_or(false)
+            .unwrap_or(true)
     }
 }
 
@@ -194,6 +195,16 @@ impl ImageKind {
             "jpeg" => Some(Self::Jpeg),
             "gif" => Some(Self::Gif),
             "webp" => Some(Self::Webp),
+            _ => None
+        }
+    }
+
+    pub fn from_guessed_format(fmt: image::ImageFormat) -> Option<Self> {
+        match fmt {
+            image::ImageFormat::Png => Some(Self::Png),
+            image::ImageFormat::Jpeg => Some(Self::Jpeg),
+            image::ImageFormat::Gif => Some(Self::Gif),
+            image::ImageFormat::WebP => Some(Self::Webp),
             _ => None
         }
     }
