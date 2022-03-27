@@ -2,6 +2,7 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use anyhow::anyhow;
 use async_trait::async_trait;
+use bytes::Bytes;
 use uuid::Uuid;
 
 use crate::config::ImageKind;
@@ -35,7 +36,7 @@ impl StorageBackend for FileSystemBackend {
         image_id: Uuid,
         kind: ImageKind,
         sizing_id: u32,
-        data: Vec<u8>,
+        data: Bytes,
     ) -> anyhow::Result<()> {
         let store_in = self.format_path(bucket_id, sizing_id);
         let path = store_in.join(format!("{}.{}", image_id, kind.as_file_extension()));
@@ -57,12 +58,12 @@ impl StorageBackend for FileSystemBackend {
         image_id: Uuid,
         kind: ImageKind,
         sizing_id: u32,
-    ) -> anyhow::Result<Option<Vec<u8>>> {
+    ) -> anyhow::Result<Option<Bytes>> {
         let store_in = self.format_path(bucket_id, sizing_id);
         let path = store_in.join(format!("{}.{}", image_id, kind.as_file_extension()));
 
         match tokio::fs::read(&path).await {
-            Ok(data) => Ok(Some(data)),
+            Ok(data) => Ok(Some(Bytes::from(data))),
             Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(None),
             Err(other) => Err(other.into()),
         }

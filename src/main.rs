@@ -98,7 +98,7 @@ async fn main() -> Result<()> {
          "Lust API",
         env!("CARGO_PKG_VERSION"),
     )
-    .description("The Lust image optimising API.")
+    .description(include_str!("../description.md"))
     .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1", args.bind)));
 
     let ui = api_service.redoc();

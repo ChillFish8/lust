@@ -1,0 +1,1 @@
+# The Lust 2 documentation

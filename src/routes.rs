@@ -221,7 +221,7 @@ impl LustApi {
         let img = bucket.fetch(image_id.0, kind, size.0, custom_sizing).await?;
         match img {
             None => Ok(FetchResponse::image_not_found(image_id.0)),
-            Some(img) => Ok(FetchResponse::Ok(Binary(img.data), img.kind.as_content_type()))
+            Some(img) => Ok(FetchResponse::Ok(Binary(img.data.to_vec()), img.kind.as_content_type()))
         }
     }
 

@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use hashbrown::HashMap;
 use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
 use crate::pipelines::{Pipeline, PipelineResult};
@@ -27,7 +28,7 @@ impl Pipeline for RealtimePipeline {
     fn on_fetch(
         &self,
         kind: ImageKind,
-        data: Vec<u8>,
+        data: Bytes,
         sizing_id: u32,
         custom_size: Option<(u32, u32)>,
     ) -> anyhow::Result<PipelineResult> {
