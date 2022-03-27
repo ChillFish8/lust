@@ -1,4 +1,4 @@
-use std::io::{Cursor, Seek, Write};
+use std::io::Cursor;
 use std::sync::Arc;
 use bytes::Bytes;
 use image::{DynamicImage, ImageFormat, load_from_memory_with_format};
@@ -9,7 +9,6 @@ pub struct EncodedImage {
     pub kind: ImageKind,
     pub buff: Bytes,
 }
-
 
 pub fn encode_following_config(
     cfg: ImageFormats,
@@ -27,7 +26,9 @@ pub fn encode_following_config(
             let local = original_image.clone();
             rayon::spawn(move || {
                 let result = encode_to(&local, ImageFormat::Png);
-                tx_local.send(result.map(|v| EncodedImage { kind: ImageKind::Png, buff: v }));
+                tx_local
+                    .send(result.map(|v| EncodedImage { kind: ImageKind::Png, buff: v }))
+                    .expect("Failed to respond to encoding request. Sender already closed.");
             });
         }
     }
@@ -45,7 +46,6 @@ pub fn encode_following_config(
 
 
 pub fn encode_once(
-    cfg: ImageFormats,
     to: ImageKind,
     from: ImageKind,
     data: Bytes,
@@ -58,7 +58,8 @@ pub fn encode_once(
     let encoded = if from != to {
         rayon::spawn(move || {
             let result = encode_to(&original_image, ImageFormat::Png);
-            tx.send(result.map(|v| EncodedImage { kind: ImageKind::Png, buff: v }));
+            tx.send(result.map(|v| EncodedImage { kind: ImageKind::Png, buff: v }))
+                .expect("Failed to respond to encoding request. Sender already closed.");
         });
 
         rx.recv()??

@@ -1,8 +1,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use hashbrown::HashMap;
 use serde::Deserialize;
-use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
+use crate::config::{BucketConfig, ImageKind};
 
 pub mod realtime;
 pub mod aot;
