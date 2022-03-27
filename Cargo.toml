@@ -24,6 +24,7 @@ mimalloc = { version = "*", default-features = false }
 clap = { version = "3", features = ["derive", "env"] }
 strum = { version = "0.24", features = ["derive"] }
 
+rayon = "1.5.1"
 crc32fast = "1.3.2"
 enum_dispatch = "0.3.8"
 hashbrown = "0.12.0"

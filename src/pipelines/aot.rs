@@ -1,7 +1,23 @@
-use crate::config::ImageKind;
+use hashbrown::HashMap;
+use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
 use crate::pipelines::{Pipeline, PipelineResult};
 
-pub struct AheadOfTimePipeline;
+pub struct AheadOfTimePipeline {
+    presets: HashMap<u32, ResizingConfig>,
+    formats: ImageFormats,
+}
+
+impl AheadOfTimePipeline {
+    pub fn new(cfg: &BucketConfig) -> Self {
+        Self {
+            presets: cfg.presets
+                .iter()
+                .map(|(key, cfg)| (crate::utils::crc_hash(key), cfg.clone()))
+                .collect(),
+            formats: cfg.formats,
+        }
+    }
+}
 
 impl Pipeline for AheadOfTimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {

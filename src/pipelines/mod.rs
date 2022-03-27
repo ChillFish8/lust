@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use hashbrown::HashMap;
 use serde::Deserialize;
-use crate::config::ImageKind;
+use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
 
 pub mod realtime;
 pub mod aot;
@@ -33,12 +34,12 @@ impl Default for ProcessingMode {
 }
 
 impl ProcessingMode {
-    pub fn build_pipeline(&self) -> PipelineController {
+    pub fn build_pipeline(&self, cfg: &BucketConfig) -> PipelineController {
         // Macro magic, ignore any type errors by the linter here.
         let selector = match self {
-            Self::Jit => PipelineSelector::from(jit::JustInTimePipeline {}),
-            Self::Aot => PipelineSelector::from(aot::AheadOfTimePipeline {}),
-            Self::Realtime => PipelineSelector::from(realtime::RealtimePipeline {}),
+            Self::Jit => PipelineSelector::from(jit::JustInTimePipeline::new(cfg)),
+            Self::Aot => PipelineSelector::from(aot::AheadOfTimePipeline::new(cfg)),
+            Self::Realtime => PipelineSelector::from(realtime::RealtimePipeline::new(cfg)),
         };
 
         PipelineController {

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use anyhow::{anyhow, Result};
+use image::ImageFormat;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use poem_openapi::Enum;
@@ -154,7 +155,7 @@ impl BucketConfig {
     }
 }
 
-#[derive(Copy, Clone, Debug, Enum, Deserialize, strum::AsRefStr)]
+#[derive(Copy, Clone, Debug, Enum, Eq, PartialEq, Deserialize, strum::AsRefStr)]
 #[oai(rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ImageKind {
@@ -169,6 +170,17 @@ pub enum ImageKind {
 
     /// The GIF encoding format.
     Gif,
+}
+
+impl Into<image::ImageFormat> for ImageKind {
+    fn into(self) -> ImageFormat {
+        match self {
+            Self::Png => image::ImageFormat::Png,
+            Self::Jpeg => image::ImageFormat::Jpeg,
+            Self::Gif => image::ImageFormat::Gif,
+            Self::Webp => image::ImageFormat::WebP,
+        }
+    }
 }
 
 impl ImageKind {

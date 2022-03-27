@@ -1,8 +1,23 @@
-use crate::config::ImageKind;
+use hashbrown::HashMap;
+use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
 use crate::pipelines::{Pipeline, PipelineResult};
 
-pub struct RealtimePipeline;
+pub struct RealtimePipeline {
+    presets: HashMap<u32, ResizingConfig>,
+    formats: ImageFormats,
+}
 
+impl RealtimePipeline {
+    pub fn new(cfg: &BucketConfig) -> Self {
+        Self {
+            presets: cfg.presets
+                .iter()
+                .map(|(key, cfg)| (crate::utils::crc_hash(key), cfg.clone()))
+                .collect(),
+            formats: cfg.formats,
+        }
+    }
+}
 
 impl Pipeline for RealtimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {

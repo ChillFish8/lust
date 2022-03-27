@@ -4,6 +4,7 @@ mod routes;
 mod pipelines;
 mod controller;
 mod utils;
+mod processor;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -78,7 +79,7 @@ async fn main() -> Result<()> {
         .iter()
         .map(|(bucket, cfg)| {
             let bucket_id = crate::utils::crc_hash(bucket);
-            let pipeline = cfg.mode.build_pipeline();
+            let pipeline = cfg.mode.build_pipeline(cfg);
             let controller = BucketController::new(
                 bucket_id,
                 global_limiter.clone(),
