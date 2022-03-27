@@ -46,7 +46,8 @@ impl Pipeline for AheadOfTimePipeline {
 
     fn on_fetch(
         &self,
-        kind: ImageKind,
+        _desired_kind: ImageKind,
+        data_kind: ImageKind,
         data: Bytes,
         sizing_id: u32,
         _custom_size: Option<(u32, u32)>,
@@ -55,7 +56,7 @@ impl Pipeline for AheadOfTimePipeline {
             response: Some(StoreEntry {
                 data,
                 sizing_id,
-                kind,
+                kind: data_kind,
             }),
             to_store: vec![],
         })

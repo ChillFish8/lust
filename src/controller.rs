@@ -116,7 +116,7 @@ impl BucketController {
     pub async fn fetch(
         &self,
         image_id: Uuid,
-        kind: ImageKind,
+        desired_kind: ImageKind,
         size_preset: Option<String>,
         custom_sizing: Option<(u32, u32)>,
     ) -> anyhow::Result<Option<StoreEntry>> {
@@ -124,14 +124,15 @@ impl BucketController {
 
         let sizing_id = size_preset.map(crate::utils::crc_hash).unwrap_or(0);
 
-        let kind = if self.config.mode == ProcessingMode::Realtime {
+        // In real time situations
+        let fetch_kind = if self.config.mode == ProcessingMode::Realtime {
             self.config.formats.original_image_store_format
         } else {
-            kind
+            desired_kind
         };
 
-        let maybe_existing = self.storage.fetch(self.bucket_id, image_id, kind, sizing_id).await?;
-        let (data, kind) = match maybe_existing {
+        let maybe_existing = self.storage.fetch(self.bucket_id, image_id, fetch_kind, sizing_id).await?;
+        let (data, retrieved_kind) = match maybe_existing {
             // If we're in JIT mode we want to re-encode the image and store it.
             None => if self.config.mode == ProcessingMode::Jit {
                 let base_kind = self.config.formats.original_image_store_format;
@@ -149,22 +150,22 @@ impl BucketController {
             } else {
                 return Ok(None)
             },
-            Some(computed) => (computed, kind),
+            Some(computed) => (computed, fetch_kind),
         };
 
         // Small optimisation here when in AOT mode to avoid
         // spawning additional threads.
         if self.config.mode == ProcessingMode::Aot {
-            return Ok(Some(StoreEntry { data, kind, sizing_id }))
+            return Ok(Some(StoreEntry { data, kind: retrieved_kind, sizing_id }))
         }
 
         let pipeline = self.pipeline.clone();
         let result = tokio::task::spawn_blocking(move || {
-            pipeline.on_fetch(kind, data, sizing_id, custom_sizing)
+            pipeline.on_fetch(desired_kind, fetch_kind, data, sizing_id, custom_sizing)
         }).await??;
 
         for store_entry in result.result.to_store {
-            self.storage.store(self.bucket_id, image_id, kind, store_entry.sizing_id, store_entry.data).await?;
+            self.storage.store(self.bucket_id, image_id, retrieved_kind, store_entry.sizing_id, store_entry.data).await?;
         }
 
         Ok(result.result.response)

@@ -27,7 +27,8 @@ impl Pipeline for RealtimePipeline {
 
     fn on_fetch(
         &self,
-        kind: ImageKind,
+        desired_kind: ImageKind,
+        data_kind: ImageKind,
         data: Bytes,
         sizing_id: u32,
         custom_size: Option<(u32, u32)>,

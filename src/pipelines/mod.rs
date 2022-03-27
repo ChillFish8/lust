@@ -91,13 +91,14 @@ impl PipelineController {
 
     pub fn on_fetch(
         &self,
-        kind: ImageKind,
+        desired_kind: ImageKind,
+        data_kind: ImageKind,
         data: Bytes,
         sizing_id: u32,
         custom_size: Option<(u32, u32)>,
     ) -> anyhow::Result<ExecutionResult> {
         let instant = Instant::now();
-        let result = self.inner.on_fetch(kind, data, sizing_id, custom_size)?;
+        let result = self.inner.on_fetch(desired_kind, data_kind, data, sizing_id, custom_size)?;
         let execution_time = instant.elapsed();
 
         Ok(ExecutionResult { result, execution_time })
