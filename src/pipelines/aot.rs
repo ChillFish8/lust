@@ -1,6 +1,9 @@
+use bytes::Bytes;
 use hashbrown::HashMap;
+
 use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
 use crate::pipelines::{Pipeline, PipelineResult};
+use crate::processor;
 
 pub struct AheadOfTimePipeline {
     presets: HashMap<u32, ResizingConfig>,
@@ -21,6 +24,12 @@ impl AheadOfTimePipeline {
 
 impl Pipeline for AheadOfTimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {
+        let encoded_images = processor::encoder::encode_following_config(
+            self.formats,
+            kind,
+            Bytes::from(data),
+        )?;
+
         todo!()
     }
 

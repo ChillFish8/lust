@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::path::Path;
 use anyhow::{anyhow, Result};
 use image::ImageFormat;
+use image::imageops::FilterType;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use poem_openapi::Enum;
@@ -310,13 +311,55 @@ pub struct WebpConfig {
     pub threading: bool,
 }
 
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub enum ResizingFilter {        
+    /// Nearest Neighbor
+    Nearest,
+
+    /// Linear Filter
+    Triangle,
+
+    /// Cubic Filter
+    CatmullRom,
+
+    /// Gaussian Filter
+    Gaussian,
+
+    /// Lanczos with window 3
+    Lanczos3,
+}
+
+impl Into<image::imageops::FilterType> for ResizingFilter {
+    fn into(self) -> FilterType {
+        match self {
+            ResizingFilter::Nearest => FilterType::Nearest,
+            ResizingFilter::Triangle => FilterType::Triangle,
+            ResizingFilter::CatmullRom => FilterType::CatmullRom,
+            ResizingFilter::Gaussian => FilterType::Gaussian,
+            ResizingFilter::Lanczos3 => FilterType::Lanczos3,
+        }
+    }
+}
+
+impl Default for ResizingFilter {
+    fn default() -> Self {
+        Self::Nearest
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, Deserialize)]
 pub struct ResizingConfig {
     /// The width to resize the image to.
-    pub width: u16,
+    pub width: u32,
 
     /// The height to resize the image to.
-    pub height: u16,
+    pub height: u32,
+    
+    #[serde(default)]
+    /// The resizing filter algorithm to use.
+    /// 
+    /// Defaults to nearest neighbour.
+    pub filter: ResizingFilter,
 }
 
 const fn default_true() -> bool {
