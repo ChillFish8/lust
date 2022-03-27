@@ -122,6 +122,10 @@ impl LustApi {
     /// Upload Image
     ///
     /// Upload an image to the given bucket.
+    /// The `content-type` header must be provided as well
+    /// as the `content-length` header otherwise the request will be rejected.
+    ///
+    /// The uploaded file must also not exceed the given `content-length`.
     #[oai(path = "/", method = "post")]
     pub async fn upload_image(
         &self,
