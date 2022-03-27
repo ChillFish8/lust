@@ -40,9 +40,15 @@ impl StorageBackend for FileSystemBackend {
         let store_in = self.format_path(bucket_id, sizing_id);
         let path = store_in.join(format!("{}.{}", image_id, kind.as_file_extension()));
 
-        tokio::fs::write(&path, data).await?;
-
-        Ok(())
+        match tokio::fs::write(&path, &data).await {
+            Ok(()) => Ok(()),
+            Err(ref e) if e.kind() == ErrorKind::NotFound => {
+                tokio::fs::create_dir_all(store_in).await?;
+                tokio::fs::write(&path, data).await?;
+                Ok(())
+            },
+            Err(other) => Err(other.into())
+        }
     }
 
     async fn fetch(

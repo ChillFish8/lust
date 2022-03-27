@@ -1,7 +1,6 @@
 backend:
-  scylla:  # Use the Scylla backend.
-    nodes:                    
-      - "127.0.0.1:9042"      
+  filesystem:  # Use the Scylla backend.
+    directory: "/data"
 
 base_serving_path: "/images"  # Serve buckets out of `/images`
 global_cache:
