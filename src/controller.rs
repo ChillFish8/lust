@@ -165,8 +165,6 @@ impl BucketController {
             Some(computed) => (computed, fetch_kind),
         };
 
-        dbg!(&retrieved_kind);
-
         // Small optimisation here when in AOT mode to avoid
         // spawning additional threads.
         if self.config.mode == ProcessingMode::Aot {
@@ -179,7 +177,6 @@ impl BucketController {
         }).await??;
 
         for store_entry in result.result.to_store {
-            dbg!(&store_entry.kind);
             self.storage.store(self.bucket_id, image_id, store_entry.kind, store_entry.sizing_id, store_entry.data).await?;
         }
 

@@ -11,9 +11,9 @@ buckets:
   user-profiles:  # Define a bucket called "user-profiles", this is accessable out of `/images/user-profiles`.
     mode: jit     # Optimise images as and when they're required then store them.
     formats: 
-      png: true  # Disable PNG encoding.
+      png: true  # Enable PNG encoding.
       jpeg: true  # Enable JPEG encoding.
-      webp: false  # Enable WebP encoding.
+      webp: false  # Disable WebP encoding.
       gif: false  # Disable GIF encoding.
 
       webp_config:
@@ -21,7 +21,7 @@ buckets:
         method: 4         # Opt on the side of performance slightly more than quality.
         threading: true   # Enable multi-threaded encoding.
 
-    default_serving_format: jpeg            # Serve the WebP format by default.
+    default_serving_format: jpeg            # Serve the Jpeg format by default.
     default_serving_preset: medium-square   # Use the "medium-square" sizing preset by default.
     
     presets:

@@ -30,6 +30,9 @@ pub fn resize_image_to_presets(
         });
     }
 
+    // Needed to prevent deadlock.
+    drop(tx);
+
     let mut finished = vec![ResizedImage {
        sizing_id: 0,
        buff: data,

@@ -15,14 +15,11 @@ pub fn encode_following_config(
     kind: ImageKind,
     data: Bytes,
 ) -> anyhow::Result<Vec<EncodedImage>> {
-    eprintln!("Encoding to = {:?}",  kind);
-    let original: ImageFormat = kind.into();
-    let original_image = Arc::new(load_from_memory_with_format(data.as_ref(), original)?);
+    let original_image = Arc::new(load_from_memory_with_format(data.as_ref(), kind.into())?);
 
     let (tx, rx) = crossbeam::channel::bounded(4);
 
     for variant in ImageKind::variants() {
-        eprintln!("Variant = {:?} :: {:?} :: {:?}", variant, cfg.is_enabled(*variant), kind);
         if cfg.is_enabled(*variant) && (kind != *variant) {
             let tx_local = tx.clone();
             let local = original_image.clone();
@@ -35,13 +32,22 @@ pub fn encode_following_config(
         }
     }
 
-    let mut finished = vec![EncodedImage {
+    // Needed to prevent deadlock.
+    drop(tx);
+
+    let mut processed = vec![];
+    while let Ok(encoded) = rx.recv() {
+        processed.push(encoded);
+    }
+
+    let mut finished = processed
+        .into_iter()
+        .collect::<Result<Vec<EncodedImage>, _>>()?;
+
+    finished.push(EncodedImage {
        kind,
        buff: data,
-    }];
-    while let Ok(encoded) = rx.recv() {
-        finished.push(encoded?);
-    }
+    });
 
     Ok(finished)
 }
@@ -52,15 +58,14 @@ pub fn encode_once(
     from: ImageKind,
     data: Bytes,
 ) -> anyhow::Result<EncodedImage> {
-    let original: ImageFormat = from.into();
-    let original_image = load_from_memory_with_format(data.as_ref(), original)?;
+    let original_image = load_from_memory_with_format(data.as_ref(), from.into())?;
 
     let (tx, rx) = crossbeam::channel::bounded(4);
 
     let encoded = if from != to {
         rayon::spawn(move || {
-            let result = encode_to(&original_image, ImageFormat::Png);
-            tx.send(result.map(|v| EncodedImage { kind: ImageKind::Png, buff: v }))
+            let result = encode_to(&original_image, to.into());
+            tx.send(result.map(|v| EncodedImage { kind: to, buff: v }))
                 .expect("Failed to respond to encoding request. Sender already closed.");
         });
 
