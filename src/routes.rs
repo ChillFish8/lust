@@ -2,13 +2,20 @@ use bytes::Bytes;
 use hashbrown::{HashMap, HashSet};
 use poem_openapi::OpenApi;
 use poem::{Body, Result};
-use poem_openapi::ApiResponse;
-use poem_openapi::param::{Header, Path};
+use poem_openapi::{ApiResponse, Object};
+use poem_openapi::param::{Header, Path, Query};
 use poem_openapi::payload::{Binary, Json};
 use futures::StreamExt;
+use uuid::Uuid;
 
 use crate::config::{config, ImageKind};
 use crate::controller::{BucketController, UploadInfo};
+
+
+#[derive(Debug, Object)]
+pub struct Detail {
+    detail: String,
+}
 
 
 #[derive(ApiResponse)]
@@ -44,6 +51,34 @@ pub enum UploadResponse {
     Unauthorized,
 }
 
+#[derive(ApiResponse)]
+pub enum FetchResponse {
+    #[oai(status = 200)]
+    Ok(Binary<Vec<u8>>),
+
+    /// Bucket does not exist or image does not exist.
+    #[oai(status = 404)]
+    NotFound(Json<Detail>),
+}
+
+impl FetchResponse {
+    fn bucket_not_found(bucket: &str) -> Self {
+        let detail = Detail {
+            detail: format!("The bucket {:?} does not exist.", bucket),
+        };
+
+        Self::NotFound(Json(detail))
+    }
+
+    fn image_not_found(image_id: Uuid) -> Self {
+        let detail = Detail {
+            detail: format!("The image {:?} does not exist in bucket.", image_id),
+        };
+
+        Self::NotFound(Json(detail))
+    }
+}
+
 
 pub struct LustApi {
     pub buckets: HashMap<String, BucketController>,
@@ -67,9 +102,9 @@ impl LustApi {
             Some(b) => b,
         };
 
-        let format: ImageKind = match serde_json::from_str(&*content_type) {
-            Err(_) => return Ok(UploadResponse::InvalidContentType),
-            Ok(f) => f,
+        let format: ImageKind = match ImageKind::from_content_type(&*content_type) {
+            None => return Ok(UploadResponse::InvalidContentType),
+            Some(f) => f,
         };
 
         let length = match *content_length {
@@ -104,5 +139,55 @@ impl LustApi {
 
         let info = bucket.upload(format, allocated_image).await?;
         Ok(UploadResponse::Ok(Json(info)))
+    }
+
+    /// Fetch Image
+    ///
+    /// Fetch the image from the storage backend and apply and additional affects
+    /// if required.
+    #[allow(clippy::too_many_arguments)]
+    #[oai(path = "/:image_id", method = "get")]
+    pub async fn fetch_image(
+        &self,
+        bucket: Path<String>,
+        image_id: Path<Uuid>,
+        format: Query<Option<ImageKind>>,
+        size: Query<Option<String>>,
+        width: Query<Option<u32>>,
+        height: Query<Option<u32>>,
+        accept: Header<Option<String>>,
+    ) -> Result<FetchResponse> {
+        let bucket = match self.buckets.get(&*bucket) {
+            None => return Ok(FetchResponse::bucket_not_found(&*bucket)),
+            Some(b) => b,
+        };
+
+        let kind = get_image_kind(format.0, accept.0, bucket);
+
+        todo!()
+    }
+}
+
+
+fn get_image_kind(direct_format: Option<ImageKind>, accept: Option<String>, bucket: &BucketController) -> ImageKind {
+    match direct_format {
+        Some(kind) => kind,
+        None => match accept {
+            Some(accept) => {
+                let parts = accept.split(",");
+                for accepted in parts {
+                    if let Some(kind) = ImageKind::from_content_type(accepted) {
+                        return kind;
+                    }
+                }
+
+                bucket.cfg()
+                    .default_serving_format
+                    .unwrap_or_else(|| bucket.cfg().formats.first_enabled_format())
+            },
+            None => bucket.cfg()
+                .default_serving_format
+                .unwrap_or_else(|| bucket.cfg().formats.first_enabled_format())
+        },
     }
 }

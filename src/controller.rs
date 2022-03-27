@@ -5,7 +5,7 @@ use tokio::sync::{Semaphore, SemaphorePermit};
 use tokio::time::Instant;
 
 use crate::config::{BucketConfig, ImageKind};
-use crate::pipelines::PipelineController;
+use crate::pipelines::{PipelineController, ProcessingMode};
 use crate::storage::template::StorageBackend;
 
 
@@ -97,6 +97,12 @@ impl BucketController {
             None => return Ok(None),
             Some(d) => d,
         };
+
+        // Small optimisation here when in AOT mode to avoid
+        // spawning additional threads.
+        if self.config.mode == ProcessingMode::Aot {
+            return Ok(Some(data))
+        }
 
         let pipeline = self.pipeline.clone();
         let result = tokio::task::spawn_blocking(move || {

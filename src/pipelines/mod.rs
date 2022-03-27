@@ -10,7 +10,7 @@ mod register;
 
 pub use register::{Pipeline, PipelineSelector};
 
-#[derive(Copy, Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ProcessingMode {
     /// Images will be optimised and resized when they're
