@@ -60,6 +60,11 @@ pub struct RuntimeConfig {
     ///
     /// This takes precedence over bucket level limits.
     pub max_upload_size: Option<usize>,
+
+    /// The global max concurrency.
+    ///
+    /// This takes precedence over bucket level limits.
+    pub max_concurrency: Option<usize>,
 }
 
 impl RuntimeConfig {
@@ -125,6 +130,9 @@ pub struct BucketConfig {
 
     /// The max upload size allowed for this bucket in MB.
     pub max_upload_size: Option<u32>,
+
+    /// The per-bucket max concurrency.
+    pub max_concurrency: Option<usize>,
 }
 
 

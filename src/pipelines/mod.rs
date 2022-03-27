@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use serde::Deserialize;
 use crate::config::ImageKind;
@@ -33,6 +34,7 @@ impl Default for ProcessingMode {
 
 impl ProcessingMode {
     pub fn build_pipeline(&self) -> PipelineController {
+        // Macro magic, ignore any type errors by the linter here.
         let selector = match self {
             Self::Jit => PipelineSelector::from(jit::JustInTimePipeline {}),
             Self::Aot => PipelineSelector::from(aot::AheadOfTimePipeline {}),
@@ -40,7 +42,7 @@ impl ProcessingMode {
         };
 
         PipelineController {
-            inner: selector,
+            inner: selector.into(),
         }
     }
 }
@@ -69,8 +71,9 @@ pub struct StoreEntry {
     pub data: Vec<u8>,
 }
 
+#[derive(Clone)]
 pub struct PipelineController {
-    inner: register::PipelineSelector,
+    inner: Arc<register::PipelineSelector>,
 }
 
 impl PipelineController {
@@ -81,6 +84,18 @@ impl PipelineController {
     ) -> anyhow::Result<ExecutionResult> {
         let instant = Instant::now();
         let result = self.inner.on_upload(kind, data)?;
+        let execution_time = instant.elapsed();
+
+        Ok(ExecutionResult { result, execution_time })
+    }
+
+    pub fn on_fetch(
+        &self,
+        kind: ImageKind,
+        data: Vec<u8>,
+    ) -> anyhow::Result<ExecutionResult> {
+        let instant = Instant::now();
+        let result = self.inner.on_fetch(kind, data)?;
         let execution_time = instant.elapsed();
 
         Ok(ExecutionResult { result, execution_time })
