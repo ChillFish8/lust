@@ -123,7 +123,14 @@ impl BucketController {
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
         let sizing_id = size_preset.map(crate::utils::crc_hash).unwrap_or(0);
-        let data = match self.storage.fetch(self.bucket_id,image_id, kind, sizing_id).await? {
+
+        let fetch_kind = if self.config.mode == ProcessingMode::Aot {
+            kind
+        } else {
+            self.config.original_image_store_format
+        };
+
+        let data = match self.storage.fetch(self.bucket_id, image_id, fetch_kind, sizing_id).await? {
             None => return Ok(None),
             Some(d) => d,
         };

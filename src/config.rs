@@ -120,6 +120,14 @@ pub struct BucketConfig {
     /// Defaults to "original".
     pub default_serving_preset: String,
 
+    #[serde(default = "default_original_format")]
+    /// The format to encode and store the original image as.
+    ///
+    /// This is only used for the JIT and Realtime processing modes
+    /// and will default to PNG encoding if empty.
+    pub original_image_store_format: ImageKind,
+
+
     #[serde(default)]
     /// A set of resizing presets, this allows resizing dimensions to be accessed
     /// via a name. E.g. "small", "medium", "large", etc...
@@ -301,6 +309,10 @@ pub struct ResizingConfig {
 
 const fn default_true() -> bool {
     true
+}
+
+const fn default_original_format() -> ImageKind {
+    ImageKind::Png
 }
 
 fn default_preset() -> String {

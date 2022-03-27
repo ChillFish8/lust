@@ -8,7 +8,13 @@ impl Pipeline for JustInTimePipeline {
         todo!()
     }
 
-    fn on_fetch(&self, kind: ImageKind, data: Vec<u8>, sizing_id: u32, custom_size: Option<(u32, u32)>) -> anyhow::Result<PipelineResult> {
+    fn on_fetch(
+        &self,
+        kind: ImageKind,
+        data: Vec<u8>,
+        sizing_id: u32,
+        _custom_size: Option<(u32, u32)>,
+    ) -> anyhow::Result<PipelineResult> {
         todo!()
     }
 }
