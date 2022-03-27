@@ -1,5 +1,5 @@
 backend:
-  filesystem:  # Use the Scylla backend.
+  filesystem:  # Use the filesystem backend.
     directory: "/data"
 
 base_serving_path: "/images"  # Serve buckets out of `/images`
