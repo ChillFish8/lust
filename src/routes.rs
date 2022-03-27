@@ -171,7 +171,7 @@ impl LustApi {
 
         let format = if let Some(format) = format.0 {
             let validate = image::load_from_memory_with_format(&allocated_image, format.into());
-            if let Err(_) = validate {
+            if validate.is_err() {
                 return Ok(UploadResponse::InvalidImageFormat)
             }
 
