@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use bytes::Bytes;
 use serde::Deserialize;
 use crate::config::{BucketConfig, ImageKind};
 
@@ -65,7 +66,7 @@ pub struct PipelineResult {
 
 /// The raw binary data of the image.
 pub struct StoreEntry {
-    pub data: Vec<u8>,
+    pub data: Bytes,
     pub kind: ImageKind,
     pub sizing_id: u32,
 }

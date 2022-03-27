@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use enum_dispatch::enum_dispatch;
 use crate::config::ImageKind;
 use crate::pipelines::PipelineResult;
@@ -26,7 +27,7 @@ pub trait Pipeline: Sync + Send + 'static {
     fn on_fetch(
         &self,
         kind: ImageKind,
-        data: Vec<u8>,
+        data: Bytes,
         sizing_id: u32,
         custom_size: Option<(u32, u32)>,
     ) -> anyhow::Result<PipelineResult>;
