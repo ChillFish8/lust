@@ -1,20 +1,26 @@
 use std::sync::Arc;
 use uuid::Uuid;
 use poem_openapi::Object;
-use tokio::sync::Semaphore;
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use crate::config::{BucketConfig, ImageKind};
 use crate::pipelines::PipelineController;
 use crate::storage::template::StorageBackend;
 
-macro_rules! get_optional_permit {
-    ($limiter:expr) => {
-        if let Some(limiter) = $limiter {
-            Some(limiter.acquire().await?)
-        } else {
-            None
-        }
-    };
+
+async fn get_optional_permit<'a>(
+    global: &'a Option<Arc<Semaphore>>,
+    local: &'a Option<Semaphore>,
+) -> anyhow::Result<Option<SemaphorePermit<'a>>> {
+    if let Some(limiter) = global {
+        return Ok(Some(limiter.acquire().await?))
+    }
+
+    if let Some(limiter) = local {
+        return Ok(Some(limiter.acquire().await?))
+    }
+
+    Ok(None)
 }
 
 #[derive(Object, Debug)]
@@ -32,6 +38,7 @@ pub struct UploadInfo {
 }
 
 pub struct BucketController {
+    global_limiter: Option<Arc<Semaphore>>,
     config: BucketConfig,
     pipeline: PipelineController,
     storage: Arc<dyn StorageBackend>,
@@ -40,11 +47,13 @@ pub struct BucketController {
 
 impl BucketController {
     pub fn new(
+        global_limiter: Option<Arc<Semaphore>>,
         config: BucketConfig,
         pipeline: PipelineController,
         storage: Arc<dyn StorageBackend>,
     ) -> Self {
         Self {
+            global_limiter,
             limiter: config.max_concurrency.map(Semaphore::new),
             config,
             pipeline,
@@ -58,7 +67,7 @@ impl BucketController {
     }
 
     pub async fn upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<UploadInfo> {
-        let _permit = get_optional_permit!(&self.limiter);
+        let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
         let pipeline = self.pipeline.clone();
         let result = tokio::task::spawn_blocking(move || {
@@ -69,7 +78,7 @@ impl BucketController {
     }
 
     pub async fn fetch(&self, image_id: Uuid, kind: ImageKind) -> anyhow::Result<Option<Vec<u8>>> {
-        let _permit = get_optional_permit!(&self.limiter);
+        let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
         let pipeline = self.pipeline.clone();
         let result = tokio::task::spawn_blocking(move || {
@@ -80,7 +89,7 @@ impl BucketController {
     }
 
     pub async fn delete(&self, image_id: Uuid) -> anyhow::Result<()> {
-        let _permit = get_optional_permit!(&self.limiter);
+        let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
         todo!()
     }
