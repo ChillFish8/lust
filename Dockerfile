@@ -13,4 +13,4 @@ WORKDIR /etc/lust
 COPY --from=build /app/target/release/lust /
 USER root
 
-ENTRYPOINT ["./lust", "run"]
+ENTRYPOINT ["./lust", "--host", "0.0.0.0"]
