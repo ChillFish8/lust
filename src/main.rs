@@ -6,6 +6,9 @@ mod controller;
 mod utils;
 mod processor;
 
+#[cfg(test)]
+mod tests;
+
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -31,25 +34,25 @@ extern crate tracing;
 pub struct ServerConfig {
     #[clap(short, long, env, default_value = "127.0.0.1")]
     /// The binding host address of the server.
-    host: String,
+    pub host: String,
 
     #[clap(short, long, env, default_value = "8000")]
-    port: u16,
+    pub port: u16,
 
     #[clap(short, long, env)]
     /// The external URL that would be used to access the server if applicable.
     ///
     /// This only affects the documentation.
-    docs_url: Option<String>,
+    pub docs_url: Option<String>,
 
     #[clap(long, env, default_value = "info")]
-    log_level: Level,
+    pub log_level: Level,
 
     #[clap(long, env)]
     /// The file path to a given config file.
     ///
     /// This can be either a JSON formatted config or YAML.
-    config_file: PathBuf,
+    pub config_file: PathBuf,
 }
 
 

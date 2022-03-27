@@ -16,6 +16,13 @@ pub fn config() -> &'static RuntimeConfig {
     CONFIG.get().expect("config init")
 }
 
+#[cfg(test)]
+pub fn init_test(data: &str) -> Result<()> {
+    let cfg: RuntimeConfig = serde_yaml::from_str(data)?;
+    let _ = CONFIG.set(cfg);
+    Ok(())
+}
+
 pub async fn init(config_file: &Path) -> Result<()> {
     let file = tokio::fs::read(config_file).await?;
 
