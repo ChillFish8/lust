@@ -55,7 +55,7 @@ async fn setup_environment() -> anyhow::Result<TestClient<Route>> {
 
 
 #[tokio::test]
-async fn test_basic_aot_upload_retrieval() -> anyhow::Result<()> {
+async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()> {
     let app = setup_environment().await?;
 
     let res = app.post("/v1/user-profiles")
@@ -63,6 +63,32 @@ async fn test_basic_aot_upload_retrieval() -> anyhow::Result<()> {
         .content_type("application/octet-stream".to_string())
         .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
         .query("format".to_string(), &"jpeg".to_string())
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::OK);
+
+    // let res = app.post("/v1/user-profiles")
+    //     .body(TEST_IMAGE)
+    //     .content_type("application/octet-stream".to_string())
+    //     .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
+    //     .query("format".to_string(), &"jpeg".to_string())
+    //     .send()
+    //     .await;
+    //
+    // res.assert_status(StatusCode::OK);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_basic_aot_upload_retrieval_with_guessing() -> anyhow::Result<()> {
+    let app = setup_environment().await?;
+
+    let res = app.post("/v1/user-profiles")
+        .body(TEST_IMAGE)
+        .content_type("application/octet-stream".to_string())
+        .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
         .send()
         .await;
 
