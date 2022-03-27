@@ -122,14 +122,6 @@ pub struct BucketConfig {
     /// Defaults to "original".
     pub default_serving_preset: String,
 
-    #[serde(default = "default_original_format")]
-    /// The format to encode and store the original image as.
-    ///
-    /// This is only used for the JIT and Realtime processing modes
-    /// and will default to PNG encoding if empty.
-    pub original_image_store_format: ImageKind,
-
-
     #[serde(default)]
     /// A set of resizing presets, this allows resizing dimensions to be accessed
     /// via a name. E.g. "small", "medium", "large", etc...
@@ -258,6 +250,13 @@ pub struct ImageFormats {
     /// This is used for fine-tuning the webp encoder for a desired size and
     /// performance behavour.
     pub webp_config: WebpConfig,
+
+    #[serde(default = "default_original_format")]
+    /// The format to encode and store the original image as.
+    ///
+    /// This is only used for the JIT and Realtime processing modes
+    /// and will default to PNG encoding if empty.
+    pub original_image_store_format: ImageKind,
 }
 
 impl ImageFormats {
@@ -312,7 +311,7 @@ pub struct WebpConfig {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
-pub enum ResizingFilter {        
+pub enum ResizingFilter {
     /// Nearest Neighbor
     Nearest,
 
@@ -354,10 +353,10 @@ pub struct ResizingConfig {
 
     /// The height to resize the image to.
     pub height: u32,
-    
+
     #[serde(default)]
     /// The resizing filter algorithm to use.
-    /// 
+    ///
     /// Defaults to nearest neighbour.
     pub filter: ResizingFilter,
 }

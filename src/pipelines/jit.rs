@@ -1,7 +1,8 @@
 use bytes::Bytes;
 use hashbrown::HashMap;
 use crate::config::{BucketConfig, ImageFormats, ImageKind, ResizingConfig};
-use crate::pipelines::{Pipeline, PipelineResult};
+use crate::pipelines::{Pipeline, PipelineResult, StoreEntry};
+use crate::processor::encoder::encode_once;
 
 pub struct JustInTimePipeline {
     presets: HashMap<u32, ResizingConfig>,
@@ -22,7 +23,12 @@ impl JustInTimePipeline {
 
 impl Pipeline for JustInTimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {
-        todo!()
+        let img = encode_once(self.formats.original_image_store_format, kind, data.into())?;
+
+        Ok(PipelineResult {
+            response: None,
+            to_store: vec![StoreEntry { kind: img.kind, data: img.buff, sizing_id: 0 }],
+        })
     }
 
     fn on_fetch(

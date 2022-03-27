@@ -124,15 +124,32 @@ impl BucketController {
 
         let sizing_id = size_preset.map(crate::utils::crc_hash).unwrap_or(0);
 
-        let fetch_kind = if self.config.mode == ProcessingMode::Aot {
-            kind
+        let kind = if self.config.mode == ProcessingMode::Realtime {
+            self.config.formats.original_image_store_format
         } else {
-            self.config.original_image_store_format
+            kind
         };
 
-        let data = match self.storage.fetch(self.bucket_id, image_id, fetch_kind, sizing_id).await? {
-            None => return Ok(None),
-            Some(d) => d,
+        let maybe_existing = self.storage.fetch(self.bucket_id, image_id, kind, sizing_id).await?;
+        let (data, kind) = match maybe_existing {
+            // If we're in JIT mode we want to re-encode the image and store it.
+            None => if self.config.mode == ProcessingMode::Jit {
+                let base_kind = self.config.formats.original_image_store_format;
+                let value = self.storage.fetch(
+                    self.bucket_id,
+                    image_id,
+                    base_kind,
+                    sizing_id,
+                ).await?;
+
+                match value {
+                    None => return Ok(None),
+                    Some(original) => (original, base_kind)
+                }
+            } else {
+                return Ok(None)
+            },
+            Some(computed) => (computed, kind),
         };
 
         // Small optimisation here when in AOT mode to avoid
