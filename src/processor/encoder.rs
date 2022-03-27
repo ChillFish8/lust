@@ -15,12 +15,14 @@ pub fn encode_following_config(
     kind: ImageKind,
     data: Bytes,
 ) -> anyhow::Result<Vec<EncodedImage>> {
+    eprintln!("Encoding to = {:?}",  kind);
     let original: ImageFormat = kind.into();
     let original_image = Arc::new(load_from_memory_with_format(data.as_ref(), original)?);
 
     let (tx, rx) = crossbeam::channel::bounded(4);
 
     for variant in ImageKind::variants() {
+        eprintln!("Variant = {:?} :: {:?} :: {:?}", variant, cfg.is_enabled(*variant), kind);
         if cfg.is_enabled(*variant) && (kind != *variant) {
             let tx_local = tx.clone();
             let local = original_image.clone();

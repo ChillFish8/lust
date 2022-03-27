@@ -173,6 +173,7 @@ pub enum ImageKind {
     Gif,
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<image::ImageFormat> for ImageKind {
     fn into(self) -> ImageFormat {
         match self {
@@ -346,6 +347,7 @@ pub enum ResizingFilter {
     Lanczos3,
 }
 
+#[allow(clippy::from_over_into)]
 impl Into<image::imageops::FilterType> for ResizingFilter {
     fn into(self) -> FilterType {
         match self {

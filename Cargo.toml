@@ -46,6 +46,6 @@ mime = "0.3.16"
 [dev-dependencies]
 poem = { version = "1.2", features = ["anyhow", "test"] }
 
-[profile.release]
-lto = "fat"
-codegen-units = 1
+# [profile.release]
+# lto = "fat"
+# codegen-units = 1

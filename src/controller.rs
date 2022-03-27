@@ -96,10 +96,26 @@ impl BucketController {
             pipeline.on_upload(kind, data)
         }).await??;
 
+        println!(
+            "{:?}",
+            result
+                .result
+                .to_store
+                .iter()
+                .map(|v| (v.kind, v.sizing_id))
+                .collect::<Vec<(ImageKind, u32)>>()
+        );
 
         let image_id = Uuid::new_v4();
         for store_entry in result.result.to_store {
-            self.storage.store(self.bucket_id, image_id, kind, store_entry.sizing_id, store_entry.data).await?;
+            self.storage
+                .store(
+                    self.bucket_id,
+                    image_id,
+                    store_entry.kind,
+                    store_entry.sizing_id,
+                    store_entry.data,
+                ).await?;
         }
 
         Ok(UploadInfo {
@@ -149,6 +165,8 @@ impl BucketController {
             Some(computed) => (computed, fetch_kind),
         };
 
+        dbg!(&retrieved_kind);
+
         // Small optimisation here when in AOT mode to avoid
         // spawning additional threads.
         if self.config.mode == ProcessingMode::Aot {
@@ -157,11 +175,12 @@ impl BucketController {
 
         let pipeline = self.pipeline.clone();
         let result = tokio::task::spawn_blocking(move || {
-            pipeline.on_fetch(desired_kind, fetch_kind, data, sizing_id, custom_sizing)
+            pipeline.on_fetch(desired_kind, retrieved_kind, data, sizing_id, custom_sizing)
         }).await??;
 
         for store_entry in result.result.to_store {
-            self.storage.store(self.bucket_id, image_id, retrieved_kind, store_entry.sizing_id, store_entry.data).await?;
+            dbg!(&store_entry.kind);
+            self.storage.store(self.bucket_id, image_id, store_entry.kind, store_entry.sizing_id, store_entry.data).await?;
         }
 
         Ok(result.result.response)
