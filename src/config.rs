@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::Path;
 use anyhow::{anyhow, Result};
-use futures::StreamExt;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use poem_openapi::Enum;
@@ -10,14 +9,9 @@ use crate::pipelines::ProcessingMode;
 use crate::storage::backends::BackendConfigs;
 
 static CONFIG: OnceCell<RuntimeConfig> = OnceCell::new();
-static BUCKET_CONFIGS: OnceCell<hashbrown::HashMap<u32, BucketConfig>> = OnceCell::new();
 
 pub fn config() -> &'static RuntimeConfig {
     CONFIG.get().expect("config init")
-}
-
-pub fn config_for_bucket(bucket_id: u32) -> Option<&'static BucketConfig> {
-    BUCKET_CONFIGS.get_or_init(hashbrown::HashMap::new).get(&bucket_id)
 }
 
 pub async fn init(config_file: &Path) -> Result<()> {
@@ -32,14 +26,6 @@ pub async fn init(config_file: &Path) -> Result<()> {
             _ => return Err(anyhow!("Config file must have an extension of either `.json`,`.yaml` or `.yml`"))
         };
 
-        let bucket_configs: hashbrown::HashMap<u32, BucketConfig> = cfg.buckets
-            .iter()
-            .map(|(name, cfg)| {
-                (crate::utils::crc_hash(name), cfg.clone())
-            })
-            .collect();
-
-        let _ = BUCKET_CONFIGS.set(bucket_configs);
         let _ = CONFIG.set(cfg);
         Ok(())
     } else {

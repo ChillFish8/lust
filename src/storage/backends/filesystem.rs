@@ -4,7 +4,8 @@ use anyhow::anyhow;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::config::{BucketConfig, config, config_for_bucket, ImageKind};
+use crate::config::ImageKind;
+use crate::controller::get_bucket_by_id;
 use crate::StorageBackend;
 
 pub struct FileSystemBackend {
@@ -66,8 +67,9 @@ impl StorageBackend for FileSystemBackend {
         bucket_id: u32,
         image_id: Uuid,
     ) -> anyhow::Result<()> {
-        let bucket = config_for_bucket(bucket_id)
-            .ok_or_else(|| anyhow!("Bucket does not exist."))?;
+        let bucket = get_bucket_by_id(bucket_id)
+            .ok_or_else(|| anyhow!("Bucket does not exist."))?
+            .cfg();
 
         for sizing_id in bucket.sizing_preset_ids().iter().copied() {
             for kind in ImageKind::variants() {

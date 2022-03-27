@@ -77,21 +77,23 @@ async fn main() -> Result<()> {
         .buckets
         .iter()
         .map(|(bucket, cfg)| {
+            let bucket_id = crate::utils::crc_hash(bucket);
             let pipeline = cfg.mode.build_pipeline();
             let controller = BucketController::new(
+                bucket_id,
                 global_limiter.clone(),
                 cfg.clone(),
                 pipeline,
                 storage.clone(),
             );
-            (bucket.to_string(), controller)
+            (bucket_id, controller)
         })
         .collect();
 
-    let api = routes::LustApi { buckets };
+    controller::init_buckets(buckets);
 
     let api_service = OpenApiService::new(
-        api,
+        routes::LustApi,
          "Lust API",
         env!("CARGO_PKG_VERSION"),
     )

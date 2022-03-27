@@ -1,6 +1,5 @@
 use std::fmt::Display;
 use bytes::Bytes;
-use hashbrown::HashMap;
 use poem_openapi::OpenApi;
 use poem::{Body, Result};
 use poem_openapi::{ApiResponse, Object};
@@ -10,7 +9,7 @@ use futures::StreamExt;
 use uuid::Uuid;
 
 use crate::config::{config, ImageKind};
-use crate::controller::{BucketController, UploadInfo};
+use crate::controller::{BucketController, get_bucket_by_name, UploadInfo};
 use crate::pipelines::ProcessingMode;
 
 
@@ -116,9 +115,7 @@ impl FetchResponse {
 }
 
 
-pub struct LustApi {
-    pub buckets: HashMap<String, BucketController>,
-}
+pub struct LustApi ;
 
 #[OpenApi(prefix_path = "/:bucket")]
 impl LustApi {
@@ -133,7 +130,7 @@ impl LustApi {
         #[oai(name = "content-type")] content_type: Header<String>,
         file: Binary<Body>,
     ) -> Result<UploadResponse> {
-        let bucket = match self.buckets.get(&*bucket) {
+        let bucket = match get_bucket_by_name(&*bucket) {
             None => return Ok(UploadResponse::NotFound),
             Some(b) => b,
         };
@@ -193,7 +190,7 @@ impl LustApi {
         height: Query<Option<u32>>,
         accept: Header<Option<String>>,
     ) -> Result<FetchResponse> {
-        let bucket = match self.buckets.get(&*bucket) {
+        let bucket = match get_bucket_by_name(&*bucket) {
             None => return Ok(FetchResponse::bucket_not_found(&*bucket)),
             Some(b) => b,
         };
@@ -232,7 +229,7 @@ impl LustApi {
         bucket: Path<String>,
         image_id: Path<Uuid>,
     ) -> Result<DeleteResponse> {
-        let bucket = match self.buckets.get(&*bucket) {
+        let bucket = match get_bucket_by_name(&*bucket) {
             None => return Ok(DeleteResponse::NotFound),
             Some(b) => b,
         };
