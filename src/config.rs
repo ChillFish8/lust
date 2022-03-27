@@ -3,6 +3,7 @@ use std::path::Path;
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
+use poem_openapi::Enum;
 use crate::pipelines::ProcessingMode;
 
 use crate::storage::backends::BackendConfigs;
@@ -21,7 +22,8 @@ pub async fn init(config_file: &Path) -> Result<()> {
         let cfg: RuntimeConfig = match ext.as_str() {
             "json" => serde_json::from_slice(&file)?,
             "yaml" => serde_yaml::from_slice(&file)?,
-            _ => return Err(anyhow!("Config file must have an extension of either `.json` or `.yaml`"))
+            "yml" => serde_yaml::from_slice(&file)?,
+            _ => return Err(anyhow!("Config file must have an extension of either `.json`,`.yaml` or `.yml`"))
         };
 
         let _ = CONFIG.set(cfg);
@@ -136,13 +138,40 @@ pub struct BucketConfig {
 }
 
 
-#[derive(Copy, Clone, Debug, Deserialize, strum::AsRefStr)]
+#[derive(Copy, Clone, Debug, Enum, Deserialize, strum::AsRefStr)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageKind {
+    /// The PNG encoding format.
     Png,
+
+    /// The JPEG encoding format.
     Jpeg,
+
+    /// The WebP encoding format.
     Webp,
+
+    /// The GIF encoding format.
     Gif,
+
+    /// Special cased handle which is the original content-type
+    /// the image was uploaded with.
+    Original,
+}
+
+impl ImageKind {
+    pub fn from_content_type(kind: &str) -> Option<Self> {
+        match kind {
+            "image/png" => Some(Self::Png),
+            "image/jpeg" => Some(Self::Jpeg),
+            "image/gif" => Some(Self::Gif),
+            "image/webp" => Some(Self::Webp),
+            "png" => Some(Self::Png),
+            "jpeg" => Some(Self::Jpeg),
+            "gif" => Some(Self::Gif),
+            "webp" => Some(Self::Webp),
+            _ => None
+        }
+    }
 }
 
 
@@ -176,11 +205,50 @@ pub struct ImageFormats {
     pub gif: bool,
 
     #[serde(default)]
+    /// Store the original image in it's original content-type.
+    ///
+    /// This is the fallback handle if none of the above are enabled.
+    /// This must be enabled if none of the above formats are enabled.
+    pub original: bool,
+
+    #[serde(default)]
     /// The (optional) webp encoder config.
     ///
     /// This is used for fine-tuning the webp encoder for a desired size and
     /// performance behavour.
     pub webp_config: WebpConfig,
+}
+
+impl ImageFormats {
+    pub fn is_enabled(&self, kind: ImageKind) -> bool {
+        match kind {
+            ImageKind::Png => self.png,
+            ImageKind::Jpeg => self.jpeg,
+            ImageKind::Webp => self.webp,
+            ImageKind::Gif => self.gif,
+            ImageKind::Original => self.original,
+        }
+    }
+
+    pub fn first_enabled_format(&self) -> ImageKind {
+        if self.png {
+            return ImageKind::Png
+        }
+
+        if self.jpeg {
+            return ImageKind::Jpeg
+        }
+
+        if self.webp {
+            return ImageKind::Webp
+        }
+
+        if self.gif {
+            return ImageKind::Gif
+        }
+
+        return ImageKind::Original
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, Deserialize)]
