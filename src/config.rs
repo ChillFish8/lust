@@ -147,6 +147,7 @@ impl BucketConfig {
 }
 
 #[derive(Copy, Clone, Debug, Enum, Deserialize, strum::AsRefStr)]
+#[oai(rename_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum ImageKind {
     /// The PNG encoding format.

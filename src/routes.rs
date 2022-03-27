@@ -134,17 +134,12 @@ impl LustApi {
         &self,
         bucket: Path<String>,
         #[oai(name = "content-length")] content_length: Header<usize>,
-        #[oai(name = "content-type")] content_type: Header<String>,
+        format: Query<ImageKind>,
         file: Binary<Body>,
     ) -> Result<UploadResponse> {
         let bucket = match get_bucket_by_name(&*bucket) {
             None => return Ok(UploadResponse::NotFound),
             Some(b) => b,
-        };
-
-        let format: ImageKind = match ImageKind::from_content_type(&*content_type) {
-            None => return Ok(UploadResponse::InvalidContentType),
-            Some(f) => f,
         };
 
         let length = if !config().valid_global_size(*content_length) {
@@ -174,7 +169,7 @@ impl LustApi {
             }
         }
 
-        let info = bucket.upload(format, allocated_image).await?;
+        let info = bucket.upload(format.0, allocated_image).await?;
         Ok(UploadResponse::Ok(Json(info)))
     }
 
