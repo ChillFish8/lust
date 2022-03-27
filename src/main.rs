@@ -13,6 +13,7 @@ use mimalloc::MiMalloc;
 use poem::listener::TcpListener;
 use poem::{Endpoint, EndpointExt, IntoResponse, Request, Response, Route, Server};
 use poem_openapi::OpenApiService;
+use tokio::sync::Semaphore;
 use tracing::Level;
 use crate::controller::BucketController;
 use crate::storage::template::StorageBackend;
@@ -61,6 +62,11 @@ async fn main() -> Result<()> {
 
     config::init(&args.config_file).await?;
 
+    let global_limiter = config::config()
+        .max_concurrency
+        .map(Semaphore::new)
+        .map(Arc::new);
+
     let storage: Arc<dyn StorageBackend> = config::config()
         .backend
         .connect()
@@ -72,6 +78,7 @@ async fn main() -> Result<()> {
         .map(|(bucket, cfg)| {
             let pipeline = cfg.mode.build_pipeline();
             let controller = BucketController::new(
+                global_limiter.clone(),
                 cfg.clone(),
                 pipeline,
                 storage.clone(),
