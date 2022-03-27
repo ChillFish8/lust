@@ -69,21 +69,21 @@ async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()
         .await;
 
     res.assert_status(StatusCode::OK);
-    // let info = res.json().await;
-    //
-    // let file_id = info
-    //     .value()
-    //     .object()
-    //     .get("image_id")
-    //     .string();
-    //
-    // let res = app.get(format!("/v1/user-profiles/{}", file_id))
-    //     .send()
-    //     .await;
-    //
-    // res.assert_status(StatusCode::OK);
-    // res.assert_content_type(&"image/png".to_string());
-    //
+    let info = res.json().await;
+
+    let file_id = info
+        .value()
+        .object()
+        .get("image_id")
+        .string();
+
+    let res = app.get(format!("/v1/user-profiles/{}", file_id))
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::OK);
+    res.assert_content_type(&"image/webp".to_string());
+
     Ok(())
 }
 
@@ -100,20 +100,20 @@ async fn test_basic_aot_upload_retrieval_with_guessing() -> anyhow::Result<()> {
         .await;
 
     res.assert_status(StatusCode::OK);
-    // let info = res.json().await;
-    //
-    // let file_id = info
-    //     .value()
-    //     .object()
-    //     .get("image_id")
-    //     .string();
-    //
-    // let res = app.get(format!("/v1/user-profiles/{}", file_id))
-    //     .send()
-    //     .await;
-    //
-    // res.assert_status(StatusCode::OK);
-    // res.assert_content_type(&"image/png".to_string());
+    let info = res.json().await;
+
+    let file_id = info
+        .value()
+        .object()
+        .get("image_id")
+        .string();
+
+    let res = app.get(format!("/v1/user-profiles/{}", file_id))
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::OK);
+    res.assert_content_type(&"image/webp".to_string());
 
     Ok(())
 }
@@ -207,7 +207,7 @@ async fn test_basic_realtime_upload_retrieval() -> anyhow::Result<()> {
         .await;
 
     res.assert_status(StatusCode::OK);
-    res.assert_content_type(&"image/jpeg".to_string());
+    res.assert_content_type(&"image/png".to_string());
 
     Ok(())
 }
@@ -238,7 +238,7 @@ async fn test_realtime_resizing() -> anyhow::Result<()> {
         .await;
 
     res.assert_status(StatusCode::OK);
-    res.assert_content_type(&"image/jpeg".to_string());
+    res.assert_content_type(&"image/png".to_string());
 
     Ok(())
 }
