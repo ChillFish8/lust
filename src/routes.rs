@@ -33,16 +33,6 @@ pub enum UploadResponse {
     #[oai(status = 413)]
     TooBig,
 
-    /// The given content-type is not allowed.
-    ///
-    /// The type must be one of:
-    /// - `image/gif`
-    /// - `image/jpeg`
-    /// - `image/png`
-    /// - `image/webp`
-    #[oai(status = 415)]
-    InvalidContentType,
-
     #[allow(unused)]
     /// You are not authorized to complete this action.
     ///
