@@ -60,16 +60,11 @@ pub struct PipelineResult {
     pub response: Option<StoreEntry>,
 
     /// To be persisted to the given storage backend.
-    pub to_store: Option<StoreEntry>,
+    pub to_store: Vec<StoreEntry>,
 }
 
-pub struct StoreEntry {
-    /// The datastore key.
-    pub key: String,
-
-    /// The raw binary data of the image.
-    pub data: Vec<u8>,
-}
+/// The raw binary data of the image.
+pub type StoreEntry = Vec<u8>;
 
 #[derive(Clone)]
 pub struct PipelineController {
