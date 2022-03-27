@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use poem::Route;
 use poem::http::StatusCode;
@@ -5,6 +6,7 @@ use poem_openapi::OpenApiService;
 use poem::test::TestClient;
 use poem::web::headers;
 use tokio::sync::Semaphore;
+use uuid::Uuid;
 
 use crate::{BucketController, config, controller, StorageBackend};
 
@@ -67,16 +69,19 @@ async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()
         .await;
 
     res.assert_status(StatusCode::OK);
+    let info = res.json().await;
 
-    // let res = app.post("/v1/user-profiles")
-    //     .body(TEST_IMAGE)
-    //     .content_type("application/octet-stream".to_string())
-    //     .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
-    //     .query("format".to_string(), &"jpeg".to_string())
-    //     .send()
-    //     .await;
-    //
-    // res.assert_status(StatusCode::OK);
+    let file_id = info
+        .value()
+        .object()
+        .get("image_id")
+        .string();
+
+    let res = app.get(format!("/v1/user-profiles/{}", file_id))
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::OK);
 
     Ok(())
 }
