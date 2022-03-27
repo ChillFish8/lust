@@ -122,9 +122,14 @@ impl LustApi {
     #[oai(path = "/", method = "post")]
     pub async fn upload_image(
         &self,
+        /// The bucket that the image should be uploaded.
         bucket: Path<String>,
+
+        /// The total size of the image in bytes.
         #[oai(name = "content-length")] content_length: Header<usize>,
         format: Query<ImageKind>,
+
+        /// The raw binary data of the image.
         file: Binary<Body>,
     ) -> Result<UploadResponse> {
         let bucket = match get_bucket_by_name(&*bucket) {
@@ -171,12 +176,25 @@ impl LustApi {
     #[oai(path = "/:image_id", method = "get")]
     pub async fn fetch_image(
         &self,
+        /// The bucket to try fetch the image from.
         bucket: Path<String>,
+
+        /// The id of the image.
         image_id: Path<Uuid>,
+
+        /// The encoding format that the image should be returned as.
         format: Query<Option<ImageKind>>,
+
+        /// The size preset that should be used when returning the image.
         size: Query<Option<String>>,
+
+        /// A custom width to resize the returned image to.
         width: Query<Option<u32>>,
+
+        /// A custom height to resize the returned image to.
         height: Query<Option<u32>>,
+
+        /// A set of `,` seperated content-types that could be sent as a response.
         accept: Header<Option<String>>,
     ) -> Result<FetchResponse> {
         let bucket = match get_bucket_by_name(&*bucket) {
@@ -215,7 +233,10 @@ impl LustApi {
     #[oai(path = "/:image_id", method = "delete")]
     pub async fn delete_image(
         &self,
+        /// The bucket to try delete the image from.
         bucket: Path<String>,
+
+        /// The image to delete try delete.
         image_id: Path<Uuid>,
     ) -> Result<DeleteResponse> {
         let bucket = match get_bucket_by_name(&*bucket) {
