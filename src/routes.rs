@@ -48,7 +48,10 @@ pub enum UploadResponse {
     InvalidContentType,
 
     #[allow(unused)]
-    /// Bucket not found
+    /// You are not authorized to complete this action.
+    ///
+    /// This normally means the `Authorization` bearer has been left out
+    /// of the request or is invalid.
     #[oai(status = 401)]
     Unauthorized,
 }
@@ -58,9 +61,14 @@ pub enum DeleteResponse {
     #[oai(status = 200)]
     Ok,
 
-    /// You do not have permission to execute this action.
+
+    #[allow(unused)]
+    /// You are not authorized to complete this action.
+    ///
+    /// This normally means the `Authorization` bearer has been left out
+    /// of the request or is invalid.
     #[oai(status = 401)]
-    UnAuthorized,
+    Unauthorized,
 
     /// Bucket does not exist.
     #[oai(status = 404)]
@@ -130,7 +138,7 @@ impl LustApi {
     pub async fn upload_image(
         &self,
         bucket: Path<String>,
-        #[oai(name = "content-length")] content_length: Header<Option<usize>>,
+        #[oai(name = "content-length")] content_length: Header<usize>,
         #[oai(name = "content-type")] content_type: Header<String>,
         file: Binary<Body>,
     ) -> Result<UploadResponse> {
@@ -144,23 +152,20 @@ impl LustApi {
             Some(f) => f,
         };
 
-        let length = match *content_length {
-            None => return Ok(UploadResponse::MissingHeader),
-            Some(length) =>  if !config().valid_global_size(length) {
+        let length = if !config().valid_global_size(*content_length) {
+            return Ok(UploadResponse::TooBig)
+        } else {
+            let local_limit = bucket
+                .cfg()
+                .max_upload_size
+                .map(|v| v as usize)
+                .unwrap_or(u32::MAX as usize);
+
+            if *content_length > local_limit  {
                 return Ok(UploadResponse::TooBig)
-            } else {
-                let local_limit = bucket
-                    .cfg()
-                    .max_upload_size
-                    .map(|v| v as usize)
-                    .unwrap_or(u32::MAX as usize);
-
-                if length > local_limit  {
-                    return Ok(UploadResponse::TooBig)
-                }
-
-                length
             }
+
+            *content_length
         };
 
         let mut allocated_image = Vec::with_capacity(length);
