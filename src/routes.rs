@@ -132,6 +132,10 @@ impl LustApi {
 
         /// The total size of the image in bytes.
         #[oai(name = "content-length")] content_length: Header<usize>,
+
+        /// The format that the uploaded image is encoded in.
+        ///
+        /// If not provided, lust will guess the encoding.
         format: Query<Option<ImageKind>>,
 
         /// The raw binary data of the image.
