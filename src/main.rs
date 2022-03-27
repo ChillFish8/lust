@@ -3,6 +3,7 @@ mod storage;
 mod routes;
 mod pipelines;
 mod controller;
+mod utils;
 
 use std::path::PathBuf;
 use std::sync::Arc;

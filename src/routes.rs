@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use bytes::Bytes;
-use hashbrown::{HashMap, HashSet};
+use hashbrown::HashMap;
 use poem_openapi::OpenApi;
 use poem::{Body, Result};
 use poem_openapi::{ApiResponse, Object};
@@ -16,6 +16,7 @@ use crate::pipelines::ProcessingMode;
 
 #[derive(Debug, Object)]
 pub struct Detail {
+    /// Additional information regarding the response.
     detail: String,
 }
 
@@ -51,6 +52,20 @@ pub enum UploadResponse {
     /// Bucket not found
     #[oai(status = 401)]
     Unauthorized,
+}
+
+#[derive(ApiResponse)]
+pub enum DeleteResponse {
+    #[oai(status = 200)]
+    Ok,
+
+    /// You do not have permission to execute this action.
+    #[oai(status = 401)]
+    UnAuthorized,
+
+    /// Bucket does not exist.
+    #[oai(status = 404)]
+    NotFound,
 }
 
 #[derive(ApiResponse)]
@@ -204,6 +219,28 @@ impl LustApi {
             Some(img) => Ok(FetchResponse::Ok(Binary(img.data), img.kind.as_content_type()))
         }
     }
+
+    /// Delete Image
+    ///
+    /// Delete the given image.
+    /// This will purge all variants of the image including sizing presets and formats.
+    ///
+    /// Images that do not exist already will be ignored and will not return a 404.
+    #[oai(path = "/:image_id", method = "delete")]
+    pub async fn delete_image(
+        &self,
+        bucket: Path<String>,
+        image_id: Path<Uuid>,
+    ) -> Result<DeleteResponse> {
+        let bucket = match self.buckets.get(&*bucket) {
+            None => return Ok(DeleteResponse::NotFound),
+            Some(b) => b,
+        };
+
+        bucket.delete(*image_id).await?;
+
+        Ok(DeleteResponse::Ok)
+    }
 }
 
 
@@ -212,7 +249,7 @@ fn get_image_kind(direct_format: Option<ImageKind>, accept: Option<String>, buck
         Some(kind) => kind,
         None => match accept {
             Some(accept) => {
-                let parts = accept.split(",");
+                let parts = accept.split(',');
                 for accepted in parts {
                     if let Some(kind) = ImageKind::from_content_type(accepted) {
                         return kind;

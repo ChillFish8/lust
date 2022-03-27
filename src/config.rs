@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use anyhow::{anyhow, Result};
+use futures::StreamExt;
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use poem_openapi::Enum;
@@ -9,9 +10,14 @@ use crate::pipelines::ProcessingMode;
 use crate::storage::backends::BackendConfigs;
 
 static CONFIG: OnceCell<RuntimeConfig> = OnceCell::new();
+static BUCKET_CONFIGS: OnceCell<hashbrown::HashMap<u32, BucketConfig>> = OnceCell::new();
 
 pub fn config() -> &'static RuntimeConfig {
     CONFIG.get().expect("config init")
+}
+
+pub fn config_for_bucket(bucket_id: u32) -> Option<&'static BucketConfig> {
+    BUCKET_CONFIGS.get_or_init(hashbrown::HashMap::new).get(&bucket_id)
 }
 
 pub async fn init(config_file: &Path) -> Result<()> {
@@ -26,6 +32,14 @@ pub async fn init(config_file: &Path) -> Result<()> {
             _ => return Err(anyhow!("Config file must have an extension of either `.json`,`.yaml` or `.yml`"))
         };
 
+        let bucket_configs: hashbrown::HashMap<u32, BucketConfig> = cfg.buckets
+            .iter()
+            .map(|(name, cfg)| {
+                (crate::utils::crc_hash(name), cfg.clone())
+            })
+            .collect();
+
+        let _ = BUCKET_CONFIGS.set(bucket_configs);
         let _ = CONFIG.set(cfg);
         Ok(())
     } else {
@@ -137,6 +151,14 @@ pub struct BucketConfig {
     pub max_concurrency: Option<usize>,
 }
 
+impl BucketConfig {
+    #[inline]
+    pub fn sizing_preset_ids(&self) -> Vec<u32> {
+        self.presets.keys()
+            .map(crate::utils::crc_hash)
+            .collect()
+    }
+}
 
 #[derive(Copy, Clone, Debug, Enum, Deserialize, strum::AsRefStr)]
 #[serde(rename_all = "lowercase")]
@@ -170,12 +192,25 @@ impl ImageKind {
     }
 
     pub fn as_content_type(&self) -> String {
+        format!("image/{}", self.as_file_extension())
+    }
+
+    pub fn as_file_extension(&self) -> &'static str {
         match self {
-            ImageKind::Png => "image/png".to_string(),
-            ImageKind::Jpeg => "image/jpeg".to_string(),
-            ImageKind::Webp => "image/webp".to_string(),
-            ImageKind::Gif => "image/gif".to_string(),
+            ImageKind::Png => "png",
+            ImageKind::Jpeg => "jpeg",
+            ImageKind::Webp => "webp",
+            ImageKind::Gif => "gif",
         }
+    }
+
+    pub fn variants() -> &'static [Self] {
+        &[
+            Self::Png,
+            Self::Jpeg,
+            Self::Gif,
+            Self::Webp,
+        ]
     }
 }
 

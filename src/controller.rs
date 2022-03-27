@@ -1,4 +1,3 @@
-use std::hash::Hash;
 use std::sync::Arc;
 use uuid::Uuid;
 use poem_openapi::Object;
@@ -100,7 +99,7 @@ impl BucketController {
     ) -> anyhow::Result<Option<StoreEntry>> {
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
-        let sizing_id = size_preset.map(crc_hash).unwrap_or(0);
+        let sizing_id = size_preset.map(crate::utils::crc_hash).unwrap_or(0);
         let data = match self.storage.fetch(image_id, kind, sizing_id).await? {
             None => return Ok(None),
             Some(d) => d,
@@ -130,9 +129,3 @@ impl BucketController {
     }
 }
 
-
-fn crc_hash<H: Hash>(v: H) -> u32 {
-    let mut hasher = crc32fast::Hasher::default();
-    v.hash(&mut hasher);
-    hasher.finalize()
-}
