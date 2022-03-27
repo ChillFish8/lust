@@ -64,7 +64,11 @@ pub struct PipelineResult {
 }
 
 /// The raw binary data of the image.
-pub type StoreEntry = Vec<u8>;
+pub struct StoreEntry {
+    pub data: Vec<u8>,
+    pub kind: ImageKind,
+    pub sizing_id: u32,
+}
 
 #[derive(Clone)]
 pub struct PipelineController {
@@ -88,9 +92,11 @@ impl PipelineController {
         &self,
         kind: ImageKind,
         data: Vec<u8>,
+        sizing_id: u32,
+        custom_size: Option<(u32, u32)>,
     ) -> anyhow::Result<ExecutionResult> {
         let instant = Instant::now();
-        let result = self.inner.on_fetch(kind, data)?;
+        let result = self.inner.on_fetch(kind, data, sizing_id, custom_size)?;
         let execution_time = instant.elapsed();
 
         Ok(ExecutionResult { result, execution_time })

@@ -152,10 +152,6 @@ pub enum ImageKind {
 
     /// The GIF encoding format.
     Gif,
-
-    /// Special cased handle which is the original content-type
-    /// the image was uploaded with.
-    Original,
 }
 
 impl ImageKind {
@@ -170,6 +166,15 @@ impl ImageKind {
             "gif" => Some(Self::Gif),
             "webp" => Some(Self::Webp),
             _ => None
+        }
+    }
+
+    pub fn as_content_type(&self) -> String {
+        match self {
+            ImageKind::Png => "image/png".to_string(),
+            ImageKind::Jpeg => "image/jpeg".to_string(),
+            ImageKind::Webp => "image/webp".to_string(),
+            ImageKind::Gif => "image/gif".to_string(),
         }
     }
 }
@@ -205,13 +210,6 @@ pub struct ImageFormats {
     pub gif: bool,
 
     #[serde(default)]
-    /// Store the original image in it's original content-type.
-    ///
-    /// This is the fallback handle if none of the above are enabled.
-    /// This must be enabled if none of the above formats are enabled.
-    pub original: bool,
-
-    #[serde(default)]
     /// The (optional) webp encoder config.
     ///
     /// This is used for fine-tuning the webp encoder for a desired size and
@@ -226,7 +224,6 @@ impl ImageFormats {
             ImageKind::Jpeg => self.jpeg,
             ImageKind::Webp => self.webp,
             ImageKind::Gif => self.gif,
-            ImageKind::Original => self.original,
         }
     }
 
@@ -247,7 +244,7 @@ impl ImageFormats {
             return ImageKind::Gif
         }
 
-        return ImageKind::Original
+        panic!("Invalid configuration, expected at least one enabled format.")
     }
 }
 

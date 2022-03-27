@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::sync::Arc;
 use uuid::Uuid;
 use poem_openapi::Object;
@@ -5,7 +6,7 @@ use tokio::sync::{Semaphore, SemaphorePermit};
 use tokio::time::Instant;
 
 use crate::config::{BucketConfig, ImageKind};
-use crate::pipelines::{PipelineController, ProcessingMode};
+use crate::pipelines::{PipelineController, ProcessingMode, StoreEntry};
 use crate::storage::template::StorageBackend;
 
 
@@ -80,7 +81,7 @@ impl BucketController {
 
         let image_id = Uuid::new_v4();
         for store_entry in result.result.to_store {
-            self.storage.store(image_id, kind, store_entry).await?;
+            self.storage.store(image_id, kind, store_entry.sizing_id, store_entry.data).await?;
         }
 
         Ok(UploadInfo {
@@ -90,10 +91,17 @@ impl BucketController {
         })
     }
 
-    pub async fn fetch(&self, image_id: Uuid, kind: ImageKind) -> anyhow::Result<Option<Vec<u8>>> {
+    pub async fn fetch(
+        &self,
+        image_id: Uuid,
+        kind: ImageKind,
+        size_preset: Option<String>,
+        custom_sizing: Option<(u32, u32)>,
+    ) -> anyhow::Result<Option<StoreEntry>> {
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
-        let data = match self.storage.fetch(image_id, kind).await? {
+        let sizing_id = size_preset.map(crc_hash).unwrap_or(0);
+        let data = match self.storage.fetch(image_id, kind, sizing_id).await? {
             None => return Ok(None),
             Some(d) => d,
         };
@@ -101,16 +109,16 @@ impl BucketController {
         // Small optimisation here when in AOT mode to avoid
         // spawning additional threads.
         if self.config.mode == ProcessingMode::Aot {
-            return Ok(Some(data))
+            return Ok(Some(StoreEntry { data, kind, sizing_id }))
         }
 
         let pipeline = self.pipeline.clone();
         let result = tokio::task::spawn_blocking(move || {
-            pipeline.on_fetch(kind, data)
+            pipeline.on_fetch(kind, data, sizing_id, custom_sizing)
         }).await??;
 
         for store_entry in result.result.to_store {
-            self.storage.store(image_id, kind, store_entry).await?;
+            self.storage.store(image_id, kind, store_entry.sizing_id, store_entry.data).await?;
         }
 
         Ok(result.result.response)
@@ -122,3 +130,9 @@ impl BucketController {
     }
 }
 
+
+fn crc_hash<H: Hash>(v: H) -> u32 {
+    let mut hasher = crc32fast::Hasher::default();
+    v.hash(&mut hasher);
+    hasher.finalize()
+}

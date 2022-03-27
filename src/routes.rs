@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use bytes::Bytes;
 use hashbrown::{HashMap, HashSet};
 use poem_openapi::OpenApi;
@@ -10,6 +11,7 @@ use uuid::Uuid;
 
 use crate::config::{config, ImageKind};
 use crate::controller::{BucketController, UploadInfo};
+use crate::pipelines::ProcessingMode;
 
 
 #[derive(Debug, Object)]
@@ -54,9 +56,20 @@ pub enum UploadResponse {
 #[derive(ApiResponse)]
 pub enum FetchResponse {
     #[oai(status = 200)]
-    Ok(Binary<Vec<u8>>),
+    Ok(
+        Binary<Vec<u8>>,
+        #[oai(header = "content-type")] String,
+    ),
+
+    /// The request is invalid with the current configuration.
+    ///
+    /// See the detail section for more info.
+    #[oai(status = 400)]
+    UnsupportedOperation(Json<Detail>),
 
     /// Bucket does not exist or image does not exist.
+    ///
+    /// See the detail section for more info.
     #[oai(status = 404)]
     NotFound(Json<Detail>),
 }
@@ -76,6 +89,14 @@ impl FetchResponse {
         };
 
         Self::NotFound(Json(detail))
+    }
+
+    fn bad_request(msg: impl Display) -> Self {
+        let detail = Detail {
+            detail: msg.to_string(),
+        };
+
+        Self::UnsupportedOperation(Json(detail))
     }
 }
 
@@ -163,8 +184,25 @@ impl LustApi {
         };
 
         let kind = get_image_kind(format.0, accept.0, bucket);
+        let custom_sizing = match (width.0, height.0) {
+            (Some(w), Some(h)) => if bucket.cfg().mode != ProcessingMode::Realtime {
+                return Ok(FetchResponse::bad_request(
+                    "Custom resizing can only be done when bucket set to 'realtime' processing mode",
+                ))
+            } else {
+                Some((w, h))
+            },
+            (None, None) => None,
+            _ => return Ok(FetchResponse::bad_request(
+                "A custom size must include both the width and the height.",
+            ))
+        };
 
-        todo!()
+        let img = bucket.fetch(image_id.0, kind, size.0, custom_sizing).await?;
+        match img {
+            None => Ok(FetchResponse::image_not_found(image_id.0)),
+            Some(img) => Ok(FetchResponse::Ok(Binary(img.data), img.kind.as_content_type()))
+        }
     }
 }
 
@@ -191,3 +229,4 @@ fn get_image_kind(direct_format: Option<ImageKind>, accept: Option<String>, buck
         },
     }
 }
+

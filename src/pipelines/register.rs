@@ -23,5 +23,11 @@ pub enum PipelineSelector {
 pub trait Pipeline: Sync + Send + 'static {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult>;
 
-    fn on_fetch(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult>;
+    fn on_fetch(
+        &self,
+        kind: ImageKind,
+        data: Vec<u8>,
+        sizing_id: u32,
+        custom_size: Option<(u32, u32)>,
+    ) -> anyhow::Result<PipelineResult>;
 }
