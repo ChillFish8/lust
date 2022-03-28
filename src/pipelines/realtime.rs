@@ -23,7 +23,13 @@ impl RealtimePipeline {
 
 impl Pipeline for RealtimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {
-        let img = processor::encoder::encode_once(self.formats.original_image_store_format, kind, data.into())?;
+        let webp_config = webp::config(
+            self.formats.webp_config.quality.is_none(),
+            self.formats.webp_config.quality.unwrap_or(50f32),
+            self.formats.webp_config.method.unwrap_or(4) as i32,
+            self.formats.webp_config.threading,
+        );
+        let img = processor::encoder::encode_once(webp_config, self.formats.original_image_store_format, kind, data.into())?;
 
         Ok(PipelineResult {
             response: None,
@@ -39,7 +45,13 @@ impl Pipeline for RealtimePipeline {
         sizing_id: u32,
         custom_size: Option<(u32, u32)>,
     ) -> anyhow::Result<PipelineResult> {
-        let img = processor::encoder::encode_once(desired_kind, data_kind, data)?;
+        let webp_config = webp::config(
+            self.formats.webp_config.quality.is_none(),
+            self.formats.webp_config.quality.unwrap_or(50f32),
+            self.formats.webp_config.method.unwrap_or(4) as i32,
+            self.formats.webp_config.threading,
+        );
+        let img = processor::encoder::encode_once(webp_config, desired_kind, data_kind, data)?;
 
         let (buff, sizing_id) = if sizing_id != 0 {
             let maybe_resize = match self.presets.get(&sizing_id) {

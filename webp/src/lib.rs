@@ -1,13 +1,13 @@
 use std::fmt::{Debug, Error, Formatter};
 use std::ops::{Deref, DerefMut};
 
-use image::{DynamicImage, GenericImageView, RgbaImage};
+use anyhow::{Result, anyhow};
+use image::{DynamicImage, RgbaImage};
 use libwebp_sys::WebPEncodingError::VP8_ENC_OK;
 use libwebp_sys::WebPPreset::WEBP_PRESET_DEFAULT;
 use libwebp_sys::*;
-use once_cell::sync::OnceCell;
+pub use libwebp_sys::WebPConfig;
 
-static CONFIG: OnceCell<WebPConfig> = OnceCell::new();
 
 /// Inits the global encoder config.
 ///
@@ -21,8 +21,8 @@ static CONFIG: OnceCell<WebPConfig> = OnceCell::new();
 ///
 ///     - multi_threading:
 ///         If the system should to attempt to use in multi-threaded encoding.
-pub fn init_global(lossless: bool, quality: f32, method: i32, multi_threading: bool) {
-    let cfg = WebPConfig {
+pub fn config(lossless: bool, quality: f32, method: i32, multi_threading: bool) -> WebPConfig {
+    WebPConfig {
         lossless: if lossless { 1 } else { 0 },
         quality,
         method,
@@ -51,9 +51,7 @@ pub fn init_global(lossless: bool, quality: f32, method: i32, multi_threading: b
         use_delta_palette: 0,
         use_sharp_yuv: 0,
         pad: [100, 100],
-    };
-
-    let _ = CONFIG.set(cfg);
+    }
 }
 
 /// Picture is uninitialized.
@@ -118,6 +116,7 @@ pub enum PixelLayout {
 }
 
 pub struct Encoder<'a> {
+    cfg: WebPConfig,
     layout: PixelLayout,
     image: &'a [u8],
     width: u32,
@@ -126,30 +125,25 @@ pub struct Encoder<'a> {
 
 impl<'a> Encoder<'a> {
     /// Creates a new encoder from the given image.
-    pub fn from_image(image: &'a DynamicImage) -> Self {
+    pub fn from_image(cfg: WebPConfig, image: &'a DynamicImage) -> Self {
         match image {
             DynamicImage::ImageRgb8(image) => {
-                Self::from_rgb(image.as_ref(), image.width(), image.height())
+                Self::from_rgb(cfg, image.as_ref(), image.width(), image.height())
             },
             DynamicImage::ImageRgba8(image) => {
-                Self::from_rgba(image.as_ref(), image.width(), image.height())
-            },
-            DynamicImage::ImageBgr8(image) => {
-                Self::from_bgr(image.as_ref(), image.width(), image.height())
-            },
-            DynamicImage::ImageBgra8(image) => {
-                Self::from_bgra(image.as_ref(), image.width(), image.height())
+                Self::from_rgba(cfg,image.as_ref(), image.width(), image.height())
             },
             other => {
                 let image = other.to_rgba8();
-                Self::from_other(other.as_bytes(), other.width(), other.height(), image)
+                Self::from_other(cfg,other.as_bytes(), other.width(), other.height(), image)
             },
         }
     }
 
     /// Creates a new encoder from the given image data in the RGB pixel layout.
-    pub fn from_rgb(image: &'a [u8], width: u32, height: u32) -> Self {
+    pub fn from_rgb(cfg: WebPConfig, image: &'a [u8], width: u32, height: u32) -> Self {
         Self {
+            cfg,
             image,
             width,
             height,
@@ -158,8 +152,9 @@ impl<'a> Encoder<'a> {
     }
 
     /// Creates a new encoder from the given image data in the RGBA pixel layout.
-    pub fn from_rgba(image: &'a [u8], width: u32, height: u32) -> Self {
+    pub fn from_rgba(cfg: WebPConfig, image: &'a [u8], width: u32, height: u32) -> Self {
         Self {
+            cfg,
             image,
             width,
             height,
@@ -167,30 +162,11 @@ impl<'a> Encoder<'a> {
         }
     }
 
-    /// Creates a new encoder from the given image data in the BGR pixel layout.
-    pub fn from_bgr(image: &'a [u8], width: u32, height: u32) -> Self {
-        Self {
-            image,
-            width,
-            height,
-            layout: PixelLayout::BGR,
-        }
-    }
-
-    /// Creates a new encoder from the given image data in the BGRA pixel layout.
-    pub fn from_bgra(image: &'a [u8], width: u32, height: u32) -> Self {
-        Self {
-            image,
-            width,
-            height,
-            layout: PixelLayout::BGRA,
-        }
-    }
-
     /// Creates a new encoder from the given image data in the Other layout,
     /// this creates a copy of the data to convert it to RGBA.
-    pub fn from_other(image: &'a [u8], width: u32, height: u32, other: RgbaImage) -> Self {
+    pub fn from_other(cfg: WebPConfig, image: &'a [u8], width: u32, height: u32, other: RgbaImage) -> Self {
         Self {
+            cfg,
             image,
             width,
             height,
@@ -199,28 +175,26 @@ impl<'a> Encoder<'a> {
     }
 
     /// Encode the image with the given global config.
-    pub fn encode(&self) -> WebPMemory {
+    pub fn encode(self) -> Result<WebPMemory> {
         let (img, layout) = if let PixelLayout::Other(img) = &self.layout {
             (img.as_ref(), &PixelLayout::RGBA)
         } else {
             (self.image.as_ref(), &self.layout)
         };
 
-        unsafe { encode(img, layout, self.width, self.height) }
+        unsafe { encode(self.cfg, img, layout, self.width, self.height) }
     }
 }
 
 macro_rules! check_ok {
     ( $e:expr, $msg:expr ) => {{
         if $e == 0 {
-            panic!("{}", $msg);
+            return Err(anyhow!("{}", $msg));
         }
     }};
 }
 
-unsafe fn encode(image: &[u8], layout: &PixelLayout, width: u32, height: u32) -> WebPMemory {
-    let cfg = CONFIG.get().expect("config un-initialised.").clone();
-
+unsafe fn encode(cfg: WebPConfig, image: &[u8], layout: &PixelLayout, width: u32, height: u32) -> Result<WebPMemory> {
     let picture = empty_webp_picture();
     let writer = WebPMemoryWriter {
         mem: std::ptr::null_mut::<u8>(),
@@ -283,13 +257,13 @@ unsafe fn encode(image: &[u8], layout: &PixelLayout, width: u32, height: u32) ->
     WebPPictureFree(picture_ptr);
     if ok == 0 {
         WebPMemoryWriterClear(writer_ptr);
-        panic!(
+        return Err(anyhow!(
             "memory error. libwebp error code: {:?}",
             (*picture_ptr).error_code
-        )
+        ))
     }
 
-    WebPMemory((*writer_ptr).mem, (*writer_ptr).size)
+    Ok(WebPMemory((*writer_ptr).mem, (*writer_ptr).size))
 }
 
 /// This struct represents a safe wrapper around memory owned by libwebp.
@@ -329,7 +303,7 @@ mod tests {
     use super::*;
 
     fn ensure_global() {
-        init_global(true, 50.0, 6, true)
+        config(true, 50.0, 6, true)
     }
 
     #[test]
