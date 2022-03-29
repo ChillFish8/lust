@@ -96,16 +96,6 @@ impl BucketController {
             pipeline.on_upload(kind, data)
         }).await??;
 
-        println!(
-            "{:?}",
-            result
-                .result
-                .to_store
-                .iter()
-                .map(|v| (v.kind, v.sizing_id))
-                .collect::<Vec<(ImageKind, u32)>>()
-        );
-
         let image_id = Uuid::new_v4();
         for store_entry in result.result.to_store {
             self.storage
