@@ -1,21 +1,24 @@
 use std::io::Cursor;
 use std::sync::Arc;
 use bytes::Bytes;
-use image::{DynamicImage, ImageFormat, load_from_memory_with_format};
+use image::{DynamicImage, ImageFormat};
 use crate::config::{ImageFormats, ImageKind};
 
 
 pub struct EncodedImage {
     pub kind: ImageKind,
     pub buff: Bytes,
+    pub sizing_id: u32,
 }
 
 pub fn encode_following_config(
     cfg: ImageFormats,
     kind: ImageKind,
-    data: Bytes,
+    img: DynamicImage,
+    sizing_id: u32,
 ) -> anyhow::Result<Vec<EncodedImage>> {
-    let original_image = Arc::new(load_from_memory_with_format(data.as_ref(), kind.into())?);
+    let original_image = Arc::new(img);
+
     let webp_config = webp::config(
         cfg.webp_config.quality.is_none(),
         cfg.webp_config.quality.unwrap_or(50f32),
@@ -32,7 +35,7 @@ pub fn encode_following_config(
             rayon::spawn(move || {
                 let result = encode_to(webp_config, &local, (*variant).into());
                 tx_local
-                    .send(result.map(|v| EncodedImage { kind: *variant, buff: v }))
+                    .send(result.map(|v| EncodedImage { kind: *variant, buff: v, sizing_id }))
                     .expect("Failed to respond to encoding request. Sender already closed.");
             });
         }
@@ -52,7 +55,8 @@ pub fn encode_following_config(
 
     finished.push(EncodedImage {
        kind,
-       buff: data,
+       sizing_id,
+       buff: Bytes::from(original_image.as_ref().as_bytes().to_vec()),
     });
 
     Ok(finished)
@@ -62,29 +66,18 @@ pub fn encode_following_config(
 pub fn encode_once(
     webp_cfg: webp::WebPConfig,
     to: ImageKind,
-    from: ImageKind,
-    data: Bytes,
+    img: DynamicImage,
+    sizing_id: u32,
 ) -> anyhow::Result<EncodedImage> {
-    let original_image = load_from_memory_with_format(data.as_ref(), from.into())?;
-
     let (tx, rx) = crossbeam::channel::bounded(4);
 
-    let encoded = if from != to {
-        rayon::spawn(move || {
-            let result = encode_to(webp_cfg, &original_image, to.into());
-            tx.send(result.map(|v| EncodedImage { kind: to, buff: v }))
-                .expect("Failed to respond to encoding request. Sender already closed.");
-        });
+    rayon::spawn(move || {
+        let result = encode_to(webp_cfg, &img, to.into());
+        tx.send(result.map(|v| EncodedImage { kind: to, buff: v, sizing_id }))
+            .expect("Failed to respond to encoding request. Sender already closed.");
+    });
 
-        rx.recv()??
-    } else {
-        EncodedImage {
-            kind: to,
-            buff: data,
-        }
-    };
-
-    Ok(encoded)
+    rx.recv()?
 }
 
 

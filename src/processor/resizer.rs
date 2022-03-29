@@ -6,7 +6,7 @@ use crate::config::{ImageKind, ResizingConfig};
 
 pub struct ResizedImage {
     pub sizing_id: u32,
-    pub buff: Bytes,
+    pub img: DynamicImage,
 }
 
 pub fn resize_image_to_presets(
@@ -23,9 +23,9 @@ pub fn resize_image_to_presets(
         let local_tx = tx.clone();
         let local = original_image.clone();
         rayon::spawn(move || {
-            let sized = resize_to_cfg(cfg, &local);
+            let img = resize(cfg, &local);
             local_tx
-                .send(ResizedImage { sizing_id, buff: sized })
+                .send(ResizedImage { sizing_id, img })
                 .expect("Failed to respond to encoding request. Sender already closed.");
         });
     }
@@ -35,7 +35,7 @@ pub fn resize_image_to_presets(
 
     let mut finished = vec![ResizedImage {
        sizing_id: 0,
-       buff: data,
+       img: original_image.as_ref().clone(),
     }];
     while let Ok(encoded) = rx.recv() {
         finished.push(encoded);
@@ -44,16 +44,6 @@ pub fn resize_image_to_presets(
     Ok(finished)
 }
 
-pub fn resize(
-    cfg: ResizingConfig,
-    kind: ImageKind,
-    data: Bytes,
-) -> anyhow::Result<Bytes> {
-    let original_image = load_from_memory_with_format(data.as_ref(), kind.into())?;
-    Ok(resize_to_cfg(cfg, &original_image))
-}
-
-fn resize_to_cfg(cfg: ResizingConfig, img: &DynamicImage) -> Bytes {
-    let img = img.resize(cfg.width, cfg.height, cfg.filter.into());
-    Bytes::from(img.into_bytes())
+pub fn resize(cfg: ResizingConfig, img: &DynamicImage) -> DynamicImage {
+    img.resize(cfg.width, cfg.height, cfg.filter.into())
 }

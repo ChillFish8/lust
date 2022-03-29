@@ -24,18 +24,26 @@ impl AheadOfTimePipeline {
 
 impl Pipeline for AheadOfTimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {
-        let encoded_images = processor::encoder::encode_following_config(
-            self.formats,
-            kind,
-            Bytes::from(data),
-        )?;
+        let resized = processor::resizer::resize_image_to_presets(&self.presets, kind, data.into())?;
+
 
         let mut to_store = vec![];
-        for encoded in encoded_images {
-            to_store.push(StoreEntry { kind: encoded.kind, data: encoded.buff.clone(), sizing_id: 0 });
+        for to_encode in resized {
+            let encoded_images = processor::encoder::encode_following_config(
+                self.formats,
+                kind,
+                to_encode.img,
+                to_encode.sizing_id
+            )?;
 
-            let resized = processor::resizer::resize_image_to_presets(&self.presets, encoded.kind, encoded.buff)?;
-            to_store.extend(resized.into_iter().map(|v| StoreEntry { kind: encoded.kind, sizing_id: v.sizing_id, data: v.buff }));
+            to_store.extend(
+                encoded_images
+                .into_iter()
+                .map(|v| StoreEntry {
+                    kind: v.kind,
+                    sizing_id: v.sizing_id,
+                    data: v.buff,
+                }));
         }
 
         Ok(PipelineResult {
