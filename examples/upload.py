@@ -16,6 +16,6 @@ r = requests.post(
 r.raise_for_status()
 data = r.json()
 
-print("My image id: {}", data['image_id'])
-print("It took {}s to complete!", data['processing_time'])
-print("And has a checksum of {}!", data['checksum'])
+print(f"My image id: {data['image_id']}")
+print(f"It took {data['processing_time']}s to complete!")
+print(f"And has a checksum of {data['checksum']}!")
