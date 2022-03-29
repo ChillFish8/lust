@@ -19,7 +19,7 @@ pub fn config() -> &'static RuntimeConfig {
 #[cfg(test)]
 pub fn init_test(data: &str) -> Result<()> {
     let cfg: RuntimeConfig = serde_yaml::from_str(data)?;
-    dbg!(&cfg);
+    dbg!(&cfg); // Useful for failed test debugging
     let _ = CONFIG.set(cfg);
     Ok(())
 }

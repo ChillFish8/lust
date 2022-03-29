@@ -34,8 +34,6 @@ impl Pipeline for RealtimePipeline {
         let img = load_from_memory_with_format(&data, kind.into())?;
         let img = processor::encoder::encode_once(webp_config, self.formats.original_image_store_format, img, 0)?;
 
-        dbg!(&img.kind, kind, self.formats.original_image_store_format);
-
         Ok(PipelineResult {
             response: None,
             to_store: vec![StoreEntry { kind: img.kind, data: img.buff, sizing_id: 0 }],
