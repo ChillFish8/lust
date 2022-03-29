@@ -41,7 +41,7 @@ impl StorageBackend for FileSystemBackend {
         let store_in = self.format_path(bucket_id, sizing_id);
         let path = store_in.join(format!("{}.{}", image_id, kind.as_file_extension()));
 
-        println!("Storing @ {:?}", &path);
+        debug!("Storing image @ {:?}", &path);
         match tokio::fs::write(&path, &data).await {
             Ok(()) => Ok(()),
             Err(ref e) if e.kind() == ErrorKind::NotFound => {
@@ -63,7 +63,7 @@ impl StorageBackend for FileSystemBackend {
         let store_in = self.format_path(bucket_id, sizing_id);
         let path = store_in.join(format!("{}.{}", image_id, kind.as_file_extension()));
 
-        dbg!(&path);
+        debug!("Retrieving image  @ {:?}", &path);
         match tokio::fs::read(&path).await {
             Ok(data) => Ok(Some(Bytes::from(data))),
             Err(ref e) if e.kind() == ErrorKind::NotFound => Ok(None),
@@ -84,6 +84,7 @@ impl StorageBackend for FileSystemBackend {
             for kind in ImageKind::variants() {
                 let store_in = self.format_path(bucket_id, sizing_id);
                 let path = store_in.join(format!("{}.{}", image_id, kind.as_file_extension()));
+                debug!("Purging image  @ {:?}", &path);
 
                  match tokio::fs::remove_file(&path).await {
                     Ok(()) => continue,
