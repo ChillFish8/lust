@@ -234,11 +234,43 @@ async fn test_realtime_resizing() -> anyhow::Result<()> {
         .string();
 
     let res = app.get(format!("/v1/user-profiles/{}", file_id))
+        .query("width".to_string(), &"500".to_string())
+        .query("height".to_string(), &"500".to_string())
         .send()
         .await;
 
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/png".to_string());
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_realtime_resizing_expect_err() -> anyhow::Result<()> {
+    let app = setup_environment(REALTIME_CONFIG).await?;
+
+    let res = app.post("/v1/user-profiles")
+        .body(TEST_IMAGE)
+        .content_type("application/octet-stream".to_string())
+        .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::OK);
+    let info = res.json().await;
+
+    let file_id = info
+        .value()
+        .object()
+        .get("image_id")
+        .string();
+
+    let res = app.get(format!("/v1/user-profiles/{}", file_id))
+        .query("width".to_string(), &"500".to_string())
+        .send()
+        .await;
+
+    res.assert_status(StatusCode::BAD_REQUEST);
 
     Ok(())
 }
