@@ -166,8 +166,25 @@ impl BucketController {
             pipeline.on_fetch(desired_kind, retrieved_kind, data, sizing_id, custom_sizing)
         }).await??;
 
+        let mut tasks = vec![];
         for store_entry in result.result.to_store {
-            self.storage.store(self.bucket_id, image_id, store_entry.kind, store_entry.sizing_id, store_entry.data).await?;
+            let storage = self.storage.clone();
+            let bucket_id = self.bucket_id;
+            let t = tokio::spawn(async move {
+                storage.store(
+                    bucket_id,
+                    image_id,
+                    store_entry.kind,
+                    store_entry.sizing_id,
+                    store_entry.data,
+                ).await
+            });
+
+            tasks.push(t);
+        }
+
+        for task in tasks {
+            task.await??;
         }
 
         Ok(result.result.response)
