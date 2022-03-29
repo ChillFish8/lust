@@ -1,17 +1,24 @@
 use std::time::Duration;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
-use s3::{Bucket, Region};
-use s3::creds::Credentials;
+use rusoto_core::credential::{AutoRefreshingProvider, ChainProvider};
+use rusoto_core::{HttpClient, HttpConfig, Region};
+use rusoto_s3::{DeleteObjectRequest, GetObjectRequest, PutObjectRequest, S3Client, S3, StreamingBody};
+use tokio::io::AsyncReadExt;
 use uuid::Uuid;
 
 use crate::config::ImageKind;
 use crate::controller::get_bucket_by_id;
 use crate::StorageBackend;
 
+/// A credential timeout.
+const CREDENTIAL_TIMEOUT: u64 = 5;
+
 pub struct BlobStorageBackend {
-    bucket: Bucket,
+    bucket_name: String,
+    client: S3Client,
+    store_public: bool,
 }
 
 impl BlobStorageBackend {
@@ -20,19 +27,32 @@ impl BlobStorageBackend {
         name: String,
         region: String,
         endpoint: String,
-        access_key: Option<&str>,
-        secret_key: Option<&str>,
-        security_token: Option<&str>,
-        session_token: Option<&str>,
-        request_timeout: Option<Duration>,
+        store_public: bool,
     ) -> Result<Self> {
-        let creds = Credentials::new(access_key, secret_key, security_token, session_token, None)?;
-        let region = Region::Custom { region, endpoint };
-        let mut bucket = Bucket::new(&name, region, creds)?;
-        bucket.set_request_timeout(request_timeout);
+        let mut chain_provider = ChainProvider::new();
+        chain_provider.set_timeout(Duration::from_secs(CREDENTIAL_TIMEOUT));
+
+        let credentials_provider = AutoRefreshingProvider::new(chain_provider)
+            .with_context(|| "Failed to fetch credentials for the object storage.")?;
+
+        let mut http_config: HttpConfig = HttpConfig::default();
+        http_config.pool_idle_timeout(std::time::Duration::from_secs(10));
+
+        let http_client = HttpClient::new_with_config(http_config)
+            .with_context(|| "Failed to create request dispatcher")?;
+
+        let region = Region::Custom { name: region, endpoint };
+
+        let client = S3Client::new_with(
+            http_client,
+            credentials_provider,
+            region,
+        );
 
         Ok(Self {
-            bucket
+            bucket_name: name,
+            client,
+            store_public,
         })
     }
 
@@ -61,12 +81,18 @@ impl StorageBackend for BlobStorageBackend {
         let store_in = self.format_path(bucket_id, sizing_id, image_id, kind);
 
         debug!("Storing image in bucket @ {}", &store_in);
-        let (_, code) = self.bucket.put_object(store_in, &data).await?;
-        if code != 200 {
-            Err(anyhow!("Remote storage bucket did not respond correctly, expected status 200 got {}", code))
-        } else {
-            Ok(())
-        }
+
+        let request = PutObjectRequest {
+            bucket: self.bucket_name.clone(),
+            key: store_in,
+            body: Some(StreamingBody::from(data.to_vec())),
+            content_length: Some(data.len() as i64),
+            acl: if self.store_public { Some("public-read".to_string()) } else { None },
+            ..Default::default()
+        };
+
+        self.client.put_object(request).await?;
+        Ok(())
     }
 
     async fn fetch(
@@ -79,13 +105,24 @@ impl StorageBackend for BlobStorageBackend {
         let store_in = self.format_path(bucket_id, sizing_id, image_id, kind);
 
         debug!("Retrieving image in bucket @ {}", &store_in);
-        let (data, code) = self.bucket.get_object(store_in).await?;
-        if code == 404 {
-            Ok(None)
-        } else if code != 200 {
-            Err(anyhow!("Remote storage bucket did not respond correctly, expected status 200 got {}", code))
+        let request = GetObjectRequest {
+            key: store_in,
+            bucket: self.bucket_name.clone(),
+            ..Default::default()
+        };
+        let res = self.client.get_object(request).await?;
+        let content_length = res.content_length.unwrap_or(0) as usize;
+
+        if let Some(body) = res.body {
+            let mut buffer = Vec::with_capacity(content_length);
+            body
+                .into_async_read()
+                .read_to_end(&mut buffer)
+                .await?;
+
+            Ok(Some(buffer.into()))
         } else {
-            Ok(Some(data.into()))
+            Ok(None)
         }
     }
 
@@ -103,13 +140,12 @@ impl StorageBackend for BlobStorageBackend {
                 let store_in = self.format_path(bucket_id, sizing_id, image_id, *kind);
 
                 debug!("Purging file in bucket @ {}", &store_in);
-                let (_, code) = self.bucket.delete_object(store_in).await?;
-                if code != 200 && code != 404 {
-                    return Err(anyhow!(
-                        "Remote storage bucket did not respond correctly, \
-                        expected status 200 got {}", code
-                    ))
-                }
+                let request = DeleteObjectRequest {
+                    bucket: self.bucket_name.clone(),
+                    key: store_in,
+                    ..Default::default()
+                };
+                self.client.delete_object(request).await?;
             }
         }
 

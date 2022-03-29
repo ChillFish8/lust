@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 use serde::Deserialize;
 
 use crate::StorageBackend;
@@ -25,20 +24,9 @@ pub enum BackendConfigs {
         /// The bucket endpoint.
         endpoint: String,
 
-        /// The optional bucket access_key.
-        access_key: Option<String>,
-
-        /// The optional bucket secret key.
-        secret_key: Option<String>,
-
-        /// The optional bucket security token.
-        security_token: Option<String>,
-
-        /// The optional bucket session token.
-        session_token: Option<String>,
-
-        /// A optional request timeout in seconds.
-        request_timeout: Option<u32>,
+        #[serde(default)]
+        /// Store objects with the `public-read` acl.
+        store_public: bool,
     }
 }
 
@@ -52,22 +40,13 @@ impl BackendConfigs {
                 name,
                 region,
                 endpoint,
-                access_key,
-                secret_key,
-                security_token,
-                session_token,
-                request_timeout,
+                store_public,
             } => {
-                let timeout = request_timeout.map(|v| Duration::from_secs(v as u64));
                 let backend = super::blob_storage::BlobStorageBackend::new(
                     name.to_string(),
                     region.to_string(),
                     endpoint.to_string(),
-                    access_key.as_ref().map(|v| v.as_str()),
-                    secret_key.as_ref().map(|v| v.as_str()),
-                    security_token.as_ref().map(|v| v.as_str()),
-                    session_token.as_ref().map(|v| v.as_str()),
-                    timeout,
+                    *store_public,
                 )?;
 
                 Ok(Arc::new(backend))
