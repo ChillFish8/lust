@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
 
         p
     } else {
-        "/images".to_string()
+        "".to_string()
     };
 
     let api_service = OpenApiService::new(
@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
         env!("CARGO_PKG_VERSION"),
     )
     .description(include_str!("../description.md"))
-    .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1", &bind)));
+    .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1{}", &bind, &serving_path)));
 
     let ui = api_service.redoc();
     let spec = api_service.spec();
