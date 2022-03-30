@@ -42,6 +42,16 @@ async fn get_optional_permit<'a>(
     Ok(None)
 }
 
+
+#[derive(Object, Debug)]
+pub struct ImageUploadInfo {
+    /// The computed image sizing id.
+    ///
+    /// This is useful for tracking files outside of lust as this is
+    /// generally used for filtering within the storage systems.
+    sizing_id: u32,
+}
+
 #[derive(Object, Debug)]
 pub struct UploadInfo {
     /// The generated ID for the file.
@@ -54,6 +64,15 @@ pub struct UploadInfo {
 
     /// The crc32 checksum of the uploaded image.
     checksum: u32,
+
+    /// The information that is specific to the image.
+    images: Vec<ImageUploadInfo>,
+
+    /// The id of the bucket the image was stored in.
+    ///
+    /// This is useful for tracking files outside of lust as this is
+    /// generally used for filtering within the storage systems.
+    bucket_id: u32,
 }
 
 pub struct BucketController {
@@ -101,6 +120,7 @@ impl BucketController {
             pipeline.on_upload(kind, data)
         }).await??;
 
+        let mut image_upload_info = vec![];
         let image_id = Uuid::new_v4();
         for store_entry in result.result.to_store {
             self.storage
@@ -112,6 +132,7 @@ impl BucketController {
                     store_entry.data.clone(),
                 ).await?;
 
+            image_upload_info.push(ImageUploadInfo { sizing_id: store_entry.sizing_id });
             if let Some(ref cache) = self.cache {
                 let cache_key = self.cache_key(
                     store_entry.sizing_id,
@@ -126,6 +147,8 @@ impl BucketController {
         Ok(UploadInfo {
             checksum,
             image_id,
+            bucket_id: self.bucket_id,
+            images: image_upload_info,
             processing_time: start.elapsed().as_secs_f32(),
         })
     }
