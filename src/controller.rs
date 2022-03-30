@@ -162,7 +162,11 @@ impl BucketController {
     ) -> anyhow::Result<Option<StoreEntry>> {
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
-        let sizing_id = size_preset.map(crate::utils::crc_hash).unwrap_or(0);
+        let sizing_id = size_preset
+            .map(Some)
+            .unwrap_or_else(|| self.config.default_serving_preset.clone())
+            .map(crate::utils::crc_hash)
+            .unwrap_or(0);
 
         // In real time situations
         let fetch_kind = if self.config.mode == ProcessingMode::Realtime {

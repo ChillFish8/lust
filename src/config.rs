@@ -36,6 +36,7 @@ pub async fn init(config_file: &Path) -> Result<()> {
             _ => return Err(anyhow!("Config file must have an extension of either `.json`,`.yaml` or `.yml`"))
         };
 
+        validate(&cfg)?;
         let _ = CONFIG.set(cfg);
         Ok(())
     } else {
@@ -43,6 +44,32 @@ pub async fn init(config_file: &Path) -> Result<()> {
     }
 }
 
+
+fn validate(cfg: &RuntimeConfig) -> Result<()> {
+    for (name, cfg) in cfg.buckets.iter() {
+        if !cfg.formats.png
+            && !cfg.formats.jpeg
+            && !cfg.formats.gif
+            && !cfg.formats.webp
+        {
+            return Err(anyhow!("Bucket {} is invalid: At least one encoding format must be enabled.", name))
+        }
+
+        if let Some(ref def) = cfg.default_serving_preset {
+            if !cfg.presets.contains_key(def) {
+                return Err(anyhow!("Bucket {} is invalid: Default serving preset does not exist.", name))
+            }
+        }
+
+        if let Some(default_format) = cfg.default_serving_format {
+            if !cfg.formats.is_enabled(default_format) {
+                return Err(anyhow!("Bucket {} is invalid: Default serving format is not an enabled encoding format.", name))
+            }
+        }
+    }
+
+    Ok(())
+}
 
 
 #[derive(Debug, Deserialize)]
@@ -124,11 +151,10 @@ pub struct BucketConfig {
     /// Defaults to the first enabled encoding format.
     pub default_serving_format: Option<ImageKind>,
 
-    #[serde(default = "default_preset")]
     /// The default resizing preset to serve images as.
     ///
-    /// Defaults to "original".
-    pub default_serving_preset: String,
+    /// Defaults to the original image size.
+    pub default_serving_preset: Option<String>,
 
     #[serde(default)]
     /// A set of resizing presets, this allows resizing dimensions to be accessed
