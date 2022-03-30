@@ -190,7 +190,12 @@ impl BucketController {
             desired_kind
         };
 
-        let maybe_existing = self.caching_fetch(image_id, fetch_kind, sizing_id).await?;
+        let maybe_existing = self.caching_fetch(
+            image_id,
+            fetch_kind,
+            if self.config.mode == ProcessingMode::Realtime { 0 } else { sizing_id },
+        ).await?;
+
         let (data, retrieved_kind) = match maybe_existing {
             // If we're in JIT mode we want to re-encode the image and store it.
             None => if self.config.mode == ProcessingMode::Jit {

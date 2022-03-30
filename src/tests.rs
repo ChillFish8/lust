@@ -97,7 +97,7 @@ async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()
         .get("image_id")
         .string();
 
-    let res = app.get(format!("/v1/user-profiles/{}", file_id))
+    let res = app.get(format!("/v1/images/user-profiles/{}", file_id))
         .send()
         .await;
 
@@ -130,7 +130,7 @@ async fn test_basic_aot_upload_retrieval_with_guessing() -> anyhow::Result<()> {
         .get("image_id")
         .string();
 
-    let res = app.get(format!("/v1/user-profiles/{}", file_id))
+    let res = app.get(format!("/v1/images/user-profiles/{}", file_id))
         .send()
         .await;
 
