@@ -28,13 +28,20 @@ impl ScyllaBackend {
 
         let base = scylla::Session::connect(cfg).await?;
         base.use_keyspace(keyspace, false).await?;
-        
+
         let connection = session::Session::from(base);
-        
+
         let table = table.unwrap_or_else(|| "lust_image".to_string());
-        let qry = format!("CREATE TABLE IF NOT EXISTS {} (bucket_id bigint, sizing_id bigint, image_id uuid, kind text, data blob)", table);
+        let qry = format!("CREATE TABLE IF NOT EXISTS {} (\
+            bucket_id bigint, \
+            sizing_id bigint, \
+            image_id uuid, \
+            kind text, \
+            data blob, \
+            PRIMARY KEY ((bucket_id, sizing_id, image_id, kind, data))
+        )", table);
         connection.query(&qry, &[]).await?;
-        
+
         Ok(Self {
             table,
             connection
@@ -46,17 +53,17 @@ impl ScyllaBackend {
 impl StorageBackend for ScyllaBackend {
     async fn store(&self, bucket_id: u32, image_id: Uuid, kind: ImageKind, sizing_id: u32, data: Bytes) -> anyhow::Result<()> {
         let qry = format!("INSERT INTO {table} (bucket_id, sizing_id, image_id, kind, data) VALUES (?, ?, ?, ?, ?);", table = self.table);
-        
+
         self.connection
             .query_prepared(&qry, (bucket_id as i64, image_id, kind.as_file_extension(), sizing_id as i64, data.to_vec()))
             .await?;
-        
+
         Ok(())
     }
 
     async fn fetch(&self, bucket_id: u32, image_id: Uuid, kind: ImageKind, sizing_id: u32) -> anyhow::Result<Option<Bytes>> {
         let qry = format!("SELECT data FROM {table} WHERE bucket_id = ? AND image_id = ? AND kind = ? AND sizing_id = ?;", table = self.table);
-        
+
         let buff = self.connection
             .query_prepared(&qry, (bucket_id as i64, image_id, kind.as_file_extension(), sizing_id as i64))
             .await?
@@ -66,17 +73,17 @@ impl StorageBackend for ScyllaBackend {
             .next()
             .transpose()?
             .map(|v| Bytes::from(v.0));
-        
+
         Ok(buff)
     }
 
     async fn delete(&self, bucket_id: u32, image_id: Uuid) -> anyhow::Result<Vec<(u32, ImageKind)>> {
         let qry = format!("DELETE FROM {table} WHERE bucket_id = ? AND image_id = ? AND kind = ? AND sizing_id = ?;", table = self.table);
-                
+
         let bucket = get_bucket_by_id(bucket_id)
             .ok_or_else(|| anyhow!("Bucket does not exist."))?
             .cfg();
-        
+
         let mut hit_entries = vec![];
         for sizing_id in bucket.sizing_preset_ids().iter().copied() {
             for kind in ImageKind::variants() {
@@ -86,7 +93,7 @@ impl StorageBackend for ScyllaBackend {
                 self.connection
                     .query_prepared(&qry, values)
                     .await?;
-                
+
                 hit_entries.push((sizing_id, *kind))
             }
         }
