@@ -3,7 +3,9 @@
 </p>
 
 #
-🔥 Build your own image CDN system your way with lust.
+<p align="center"> 
+ <h2 align="center">🔥 Build your own image CDN system your way with lust.</h2>
+</p>
 
 Lust is an auto-optimising image server, designed for high throughput and low latency handling of images, *now that is lustful*.
 Re-encode uploaded images into `png`, `jpeg`, `webp` or even into `gif` based formats! 
