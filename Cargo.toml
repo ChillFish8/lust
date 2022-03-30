@@ -1,7 +1,7 @@
 [package]
 name = "lust"
 version = "2.0.0"
-authors = ["Harrison Burt <57491488+ChillFish8@users.noreply.github.com>"]
+authors = ["Harrison Burt <hburt2003@gmail.com>"]
 edition = "2021"
 documentation = "getting-started.md"
 readme = "README.md"

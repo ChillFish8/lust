@@ -32,6 +32,7 @@ extern crate tracing;
 
 
 #[derive(Debug, Parser)]
+#[clap(author, version, about)]
 pub struct ServerConfig {
     #[clap(short, long, env, default_value = "127.0.0.1")]
     /// The binding host address of the server.
