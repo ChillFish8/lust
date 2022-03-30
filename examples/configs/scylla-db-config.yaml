@@ -1,0 +1,23 @@
+backend:
+  scylla:
+    nodes:
+      - "127.0.0.1:9042"
+    keyspace: lust  # The keyspace must be created ahead of time.
+
+base_serving_path: "/images"  # Serve buckets out of `/images`
+global_cache:
+  max_capacity: 500   # We set 500MB max cache capacity.
+
+buckets:
+  user-profiles:  # Define a bucket called "user-profiles", this is accessable out of `/images/user-profiles`.
+    mode: aot     # Optimise images as and when they're required then store them.
+    formats:
+      png: true  # Enable PNG encoding.
+      jpeg: true  # Enable JPEG encoding.
+      webp: false  # Disable WebP encoding.
+      gif: false  # Disable GIF encoding.
+
+    default_serving_format: jpeg            # Serve the WebP format by default.
+
+    cache: null  # Use the global cache handler.
+
