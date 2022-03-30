@@ -38,7 +38,7 @@ impl ScyllaBackend {
             image_id uuid, \
             kind text, \
             data blob, \
-            PRIMARY KEY ((bucket_id, sizing_id, image_id, kind, data))
+            PRIMARY KEY ((bucket_id, sizing_id, image_id, kind))
         )", table);
         connection.query(&qry, &[]).await?;
 
@@ -55,7 +55,7 @@ impl StorageBackend for ScyllaBackend {
         let qry = format!("INSERT INTO {table} (bucket_id, sizing_id, image_id, kind, data) VALUES (?, ?, ?, ?, ?);", table = self.table);
 
         self.connection
-            .query_prepared(&qry, (bucket_id as i64, image_id, kind.as_file_extension(), sizing_id as i64, data.to_vec()))
+            .query_prepared(&qry, (bucket_id as i64, sizing_id as i64,  image_id, kind.as_file_extension(), data.to_vec()))
             .await?;
 
         Ok(())
