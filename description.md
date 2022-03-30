@@ -55,7 +55,7 @@ This is a demo config file outlining and explain each configuration key.
 
 *Note: This is in the YAML format, but an equivalent in JSON is also supported*
 
-```yaml 
+```yaml
 global_cache:
     # We cache upto 1GB's worth of the most recently used images.
     # Like the bucket cache a max_images limit can also be applied
