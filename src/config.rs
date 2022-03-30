@@ -99,7 +99,7 @@ pub struct RuntimeConfig {
     /// If this is `None` then no caching is performed.
     pub global_cache: Option<CacheConfig>,
 
-    /// The *global* max upload size allowed for this bucket in MB.
+    /// The *global* max upload size allowed in KB.
     ///
     /// This takes precedence over bucket level limits.
     pub max_upload_size: Option<usize>,
@@ -115,7 +115,7 @@ impl RuntimeConfig {
     pub fn valid_global_size(&self, size: usize) -> bool {
         self
             .max_upload_size
-            .map(|limit| size <= limit)
+            .map(|limit| size <= (limit * 1024))
             .unwrap_or(true)
     }
 }
@@ -170,7 +170,7 @@ pub struct BucketConfig {
     /// If `None` this will use the global handler.
     pub cache: Option<CacheConfig>,
 
-    /// The max upload size allowed for this bucket in MB.
+    /// The max upload size allowed for this bucket in KB.
     pub max_upload_size: Option<u32>,
 
     /// The per-bucket max concurrency.
@@ -360,6 +360,7 @@ pub struct WebpConfig {
 }
 
 #[derive(Copy, Clone, Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ResizingFilter {
     /// Nearest Neighbor
     Nearest,
