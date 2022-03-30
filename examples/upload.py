@@ -4,7 +4,7 @@ with open("./example.jpeg", "rb") as file:
     image = file.read()
 
 r = requests.post(
-    "http://127.0.0.1:8000/v1/user-profiles",
+    "http://127.0.0.1:8000/v1/images/user-profiles",
     params={"format": "jpeg"},
     headers={
         "content-length": str(len(image)),
