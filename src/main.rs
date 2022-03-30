@@ -110,6 +110,11 @@ async fn main() -> Result<()> {
         "serving requests @ http://{}",
         &bind,
     );
+    info!(
+        "Image handling @ http://{}/{}",
+        &bind,
+        format!("v1{}", serving_path),
+    );
     info!("GitHub: https://github.com/chillfish8/lust");
     info!("To ask questions visit: https://github.com/chillfish8/lust/discussions");
     info!(
