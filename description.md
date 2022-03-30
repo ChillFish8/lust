@@ -59,7 +59,7 @@ This is a demo config file outlining and explain each configuration key.
 global_cache:
     # We cache upto 1GB's worth of the most recently used images.
     # Like the bucket cache a max_images limit can also be applied
-    # but not used in tandom with the max_capacity limit.
+    # but not used in tandem with the max_capacity limit.
     # If this is `null`/unset then no caching is performed.
     max_capacity: 1024  
     
@@ -97,7 +97,7 @@ backend:
         # blobstore attributes
         # 
         # This also requires `AWS_SECRET_ACCESS_KEY` and `AWS_ACCESS_KEY_ID`
-        # environment varibles for auth.
+        # environment variables for auth.
         # name: "my-bucket"
         # region: "my-s3-region"
         # endpoint: "https://s3.eu2.my-endpoint.com"
@@ -124,7 +124,7 @@ buckets:
             # compression: 0 is the fastest but gives larger
             # files compared to the slowest, but best, 100.
             #
-            # If set to `null` this will enabled lossless encoding.
+            # If set to `null` this will enable lossless encoding.
             quality: 80       # Set lossy quality to 80% (0.0 - 100.0)
             
             # The quality / speed trade-off (0=fast, 6=slower-better)
@@ -135,7 +135,7 @@ buckets:
             # float: 0.0 (worse) - 100.0 inclusive (better but slower).
             # compression: 60             
 
-            threading: true   # Enable multi-threaded encoding.
+            threading: true   # Enable multithreaded encoding.
             
         # The encoding format to serve the image as if not explicitly specified.
         # Defaults to the first enabled encoding format is no set.
