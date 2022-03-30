@@ -13,6 +13,11 @@ RUN cargo build --release
 FROM debian:buster-slim
 
 WORKDIR /etc/lust
+
+RUN apt-get update \
+    && apt-get install -y ca-certificates tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /app/target/release/lust /
 USER root
 
