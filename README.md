@@ -2,8 +2,9 @@
   <img width="50%" src="https://user-images.githubusercontent.com/57491488/160932579-518e61b8-6a3d-4400-a46c-1cb93d461417.png" alt="Lust Logo">
 </p>
 
-#
-🔥 Build your own image CDN system your way with lust.
+<p align="center"> 
+ <h2 align="center">🔥 Build your own image CDN system your way with lust.</h2>
+</p>
 
 Lust is an auto-optimising image server, designed for high throughput and low latency handling of images, *now that is lustful*.
 Re-encode uploaded images into `png`, `jpeg`, `webp` or even into `gif` based formats! 
