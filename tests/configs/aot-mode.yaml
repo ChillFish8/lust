@@ -2,7 +2,6 @@ backend:
   filesystem:  # Use the filesystem backend.
     directory: "data"
 
-base_serving_path: "/images"  # Serve buckets out of `/images`
 global_cache:
   max_images: 1000    # At most cache 1000 images.
   max_capacity: 500   # 500MB max capacity.
@@ -10,7 +9,7 @@ global_cache:
 buckets:
   user-profiles:  # Define a bucket called "user-profiles", this is accessable out of `/images/user-profiles`.
     mode: aot     # Optimise images as and when they're required then store them.
-    formats: 
+    formats:
       png: true  # Enable PNG encoding.
       jpeg: true  # Enable JPEG encoding.
       webp: true  # Enable WebP encoding.
@@ -23,11 +22,11 @@ buckets:
 
     default_serving_format: webp            # Serve the WebP format by default.
     default_serving_preset: medium-square   # Use the "medium-square" sizing preset by default.
-    
+
     presets:
       medium-square:  # Define a new resizing preset.
         width: 500    # 500px
         height: 500   # 500px
 
-    cache: null  # Use the global cache handler.            
-  
+    cache: null  # Use the global cache handler.
+

@@ -21,7 +21,7 @@ buckets:
     #
     # cache: null  # Use the global cache handler.
 
-    mode: realtime     # Optimise images as and when they're required then store them.
+    mode: aot     # Optimise images as and when they're required then store them.
     formats:
       png: true  # Disable PNG encoding.
       jpeg: true  # Enable JPEG encoding.
