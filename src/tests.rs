@@ -1,8 +1,9 @@
 use std::sync::Arc;
+use image::load_from_memory_with_format;
 use poem::Route;
 use poem::http::StatusCode;
 use poem_openapi::OpenApiService;
-use poem::test::TestClient;
+use poem::test::{TestClient, TestResponse};
 use poem::web::headers;
 use tokio::sync::Semaphore;
 
@@ -62,11 +63,24 @@ async fn setup_environment(cfg: &str) -> anyhow::Result<TestClient<Route>> {
 }
 
 
+async fn validate_image_content(
+    res: TestResponse,
+    expected_format: image::ImageFormat,
+) -> anyhow::Result<()> {
+    let body = res.0.into_body().into_bytes().await?;
+
+    load_from_memory_with_format(&body, expected_format)
+        .expect("Invalid image returned for expected format");
+
+    Ok(())
+}
+
+
 #[tokio::test]
 async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()> {
     let app = setup_environment(AOT_CONFIG).await?;
 
-    let res = app.post("/v1/user-profiles")
+    let res = app.post("/v1/images/user-profiles")
         .body(TEST_IMAGE)
         .content_type("application/octet-stream".to_string())
         .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
@@ -89,6 +103,8 @@ async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()
 
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/webp".to_string());
+
+    validate_image_content(res, image::ImageFormat::WebP).await?;
 
     Ok(())
 }
@@ -97,7 +113,7 @@ async fn test_basic_aot_upload_retrieval_without_guessing() -> anyhow::Result<()
 async fn test_basic_aot_upload_retrieval_with_guessing() -> anyhow::Result<()> {
     let app = setup_environment(AOT_CONFIG).await?;
 
-    let res = app.post("/v1/user-profiles")
+    let res = app.post("/v1/images/user-profiles")
         .body(TEST_IMAGE)
         .content_type("application/octet-stream".to_string())
         .typed_header(headers::ContentLength(TEST_IMAGE.len() as u64))
@@ -120,6 +136,8 @@ async fn test_basic_aot_upload_retrieval_with_guessing() -> anyhow::Result<()> {
 
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/webp".to_string());
+
+    validate_image_content(res, image::ImageFormat::WebP).await?;
 
     Ok(())
 }
@@ -151,6 +169,8 @@ async fn test_basic_jit_upload_retrieval() -> anyhow::Result<()> {
 
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/jpeg".to_string());
+
+    validate_image_content(res, image::ImageFormat::Jpeg).await?;
 
     Ok(())
 }
@@ -184,6 +204,8 @@ async fn test_jit_upload_custom_format_retrieval() -> anyhow::Result<()> {
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/png".to_string());
 
+    validate_image_content(res, image::ImageFormat::Png).await?;
+
     Ok(())
 }
 
@@ -214,6 +236,8 @@ async fn test_basic_realtime_upload_retrieval() -> anyhow::Result<()> {
 
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/png".to_string());
+
+    validate_image_content(res, image::ImageFormat::Png).await?;
 
     Ok(())
 }
@@ -247,6 +271,8 @@ async fn test_realtime_resizing() -> anyhow::Result<()> {
 
     res.assert_status(StatusCode::OK);
     res.assert_content_type(&"image/png".to_string());
+
+    validate_image_content(res, image::ImageFormat::Png).await?;
 
     Ok(())
 }

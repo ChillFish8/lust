@@ -415,6 +415,3 @@ const fn default_original_format() -> ImageKind {
     ImageKind::Png
 }
 
-fn default_preset() -> String {
-    String::from("original")
-}
