@@ -13,7 +13,6 @@ pub struct EncodedImage {
 
 pub fn encode_following_config(
     cfg: ImageFormats,
-    kind: ImageKind,
     img: DynamicImage,
     sizing_id: u32,
 ) -> anyhow::Result<Vec<EncodedImage>> {
@@ -29,7 +28,7 @@ pub fn encode_following_config(
     let (tx, rx) = crossbeam::channel::bounded(4);
 
     for variant in ImageKind::variants() {
-        if cfg.is_enabled(*variant) && (kind != *variant) {
+        if cfg.is_enabled(*variant) {
             let tx_local = tx.clone();
             let local = original_image.clone();
             rayon::spawn(move || {
@@ -49,15 +48,9 @@ pub fn encode_following_config(
         processed.push(encoded);
     }
 
-    let mut finished = processed
+    let finished = processed
         .into_iter()
         .collect::<Result<Vec<EncodedImage>, _>>()?;
-
-    finished.push(EncodedImage {
-       kind,
-       sizing_id,
-       buff: Bytes::from(original_image.as_ref().as_bytes().to_vec()),
-    });
 
     Ok(finished)
 }
@@ -89,7 +82,6 @@ pub fn encode_to(webp_cfg: webp::WebPConfig, img: &DynamicImage, format: ImageFo
 
         return Ok(Bytes::from(encoded?.to_vec()))
     }
-
 
     let mut buff = Cursor::new(Vec::new());
     img.write_to(&mut buff, format)?;

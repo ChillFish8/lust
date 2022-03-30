@@ -26,12 +26,10 @@ impl Pipeline for AheadOfTimePipeline {
     fn on_upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<PipelineResult> {
         let resized = processor::resizer::resize_image_to_presets(&self.presets, kind, data.into())?;
 
-
         let mut to_store = vec![];
         for to_encode in resized {
             let encoded_images = processor::encoder::encode_following_config(
                 self.formats,
-                kind,
                 to_encode.img,
                 to_encode.sizing_id
             )?;
