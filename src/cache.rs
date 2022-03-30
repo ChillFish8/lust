@@ -1,58 +1,59 @@
-use std::sync::Arc;
-
-use bytes::BytesMut;
-use concread::arcache::{ARCache, ARCacheBuilder};
+use std::ops::Deref;
+use anyhow::anyhow;
+use bytes::Bytes;
 use once_cell::sync::OnceCell;
-use uuid::Uuid;
+use crate::config::CacheConfig;
 
-use crate::image::ImageFormat;
+static GLOBAL_CACHE: OnceCell<Cache> = OnceCell::new();
 
-/// The key that acts as the hashed key.
-pub type CacheKey = (Uuid, String, ImageFormat);
-
-/// Cheaply cloneable lock around a LRU cache.
-pub type CacheStore = Arc<ARCache<CacheKey, BytesMut>>;
-
-pub static CACHE_STATE: OnceCell<CacheState> = OnceCell::new();
-
-/// A wrapper around the `CacheStore` type letting it be put into Gotham's
-/// shared state.
-#[derive(Clone)]
-pub struct CacheState(pub Option<CacheStore>);
-
-impl CacheState {
-    /// Creates a new cache state instance with a given size.
-    pub fn init(cache_size: usize) {
-        let inst = if cache_size == 0 {
-            Self { 0: None }
-        } else {
-            let store = Arc::new(ARCacheBuilder::new()
-                .set_size(cache_size, 12)
-                .build()
-                .unwrap()
-            );
-            Self { 0: Some(store) }
-        };
-
-        let _ = CACHE_STATE.set(inst);
+pub fn new_cache(cfg: CacheConfig) -> anyhow::Result<Option<Cache>> {
+    if cfg.max_capacity.is_some() && cfg.max_images.is_some() {
+        return Err(anyhow!("Cache must be *either* based off of number of images or amount of memory, not both."))
+    } else if cfg.max_capacity.is_none() && cfg.max_images.is_none() {
+        return Ok(None)
     }
 
-    /// Get a item from the cache if it exists otherwise returns None.
-    pub fn get(&self, file_id: Uuid, preset: String, format: ImageFormat) -> Option<BytesMut> {
-        let state = self.0.as_ref()?;
-        let ref_val = (file_id, preset, format);
-        let mut target = state.read();
-        target.get(&ref_val).map(|v| v.clone())
+    let mut cache = moka::sync::CacheBuilder::default();
+    if let Some(max_items) = cfg.max_images {
+        cache = cache.max_capacity(max_items as u64)
     }
 
-    /// Adds an item to the cache, if the cache size is already at it's limit
-    /// the least recently used (LRU) item is removed.
-    pub fn set(&self, file_id: Uuid, preset: String, format: ImageFormat, data: BytesMut) {
-        if let Some(state) = self.0.as_ref() {
-            let ref_val = (file_id, preset, format);
-            let mut target = state.write();
-            target.insert(ref_val, data);
-            target.commit();
+    if let Some(max_memory) = cfg.max_capacity {
+        cache = cache
+            .weigher(|k: &String, v: &Bytes| (k.len() + v.len()) as u32)
+            .max_capacity((max_memory * 1024 * 1024) as u64);
+    }
+
+    Ok(Some(cache.build().into()))
+}
+
+pub fn init_cache(cfg: CacheConfig) -> anyhow::Result<()> {
+    if let Some(cache) = new_cache(cfg)? {
+        let _ = GLOBAL_CACHE.set(cache);
+    };
+    Ok(())
+}
+
+pub fn global_cache<'a>() -> Option<&'a Cache> {
+    GLOBAL_CACHE.get()
+}
+
+pub struct Cache {
+    inner: moka::sync::Cache<String, Bytes>,
+}
+
+impl Deref for Cache {
+    type Target = moka::sync::Cache<String, Bytes>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl From<moka::sync::Cache<String, Bytes>> for Cache {
+    fn from(v: moka::sync::Cache<String, Bytes>) -> Self {
+        Self {
+            inner: v
         }
     }
 }

@@ -1,8 +1,8 @@
 FROM rust:slim-buster as build
 
-WORKDIR /code
+WORKDIR /app
 
-COPY . /code
+COPY . /app
 
 RUN cargo build --release
 
@@ -10,7 +10,7 @@ RUN cargo build --release
 FROM debian:buster-slim
 
 WORKDIR /etc/lust
-COPY --from=build /code/target/release/lust /
+COPY --from=build /app/target/release/lust /
 USER root
 
-ENTRYPOINT ["./lust", "run"]
+ENTRYPOINT ["./lust", "--host", "0.0.0.0"]
