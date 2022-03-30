@@ -1,10 +1,12 @@
 use std::hash::Hash;
 use std::sync::Arc;
+use bytes::Bytes;
 use once_cell::sync::OnceCell;
 use uuid::Uuid;
 use poem_openapi::Object;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tokio::time::Instant;
+use crate::cache::{Cache, global_cache};
 
 use crate::config::{BucketConfig, ImageKind};
 use crate::pipelines::{PipelineController, ProcessingMode, StoreEntry};
@@ -56,6 +58,7 @@ pub struct UploadInfo {
 
 pub struct BucketController {
     bucket_id: u32,
+    cache: Option<Cache>,
     global_limiter: Option<Arc<Semaphore>>,
     config: BucketConfig,
     pipeline: PipelineController,
@@ -66,6 +69,7 @@ pub struct BucketController {
 impl BucketController {
     pub fn new(
         bucket_id: u32,
+        cache: Option<Cache>,
         global_limiter: Option<Arc<Semaphore>>,
         config: BucketConfig,
         pipeline: PipelineController,
@@ -73,6 +77,7 @@ impl BucketController {
     ) -> Self {
         Self {
             bucket_id,
+            cache,
             global_limiter,
             limiter: config.max_concurrency.map(Semaphore::new),
             config,
@@ -104,8 +109,18 @@ impl BucketController {
                     image_id,
                     store_entry.kind,
                     store_entry.sizing_id,
-                    store_entry.data,
+                    store_entry.data.clone(),
                 ).await?;
+
+            if let Some(ref cache) = self.cache {
+                let cache_key = self.cache_key(
+                    store_entry.sizing_id,
+                    image_id,
+                    store_entry.kind,
+                );
+
+                cache.insert(cache_key, store_entry.data);
+            }
         }
 
         Ok(UploadInfo {
@@ -133,13 +148,12 @@ impl BucketController {
             desired_kind
         };
 
-        let maybe_existing = self.storage.fetch(self.bucket_id, image_id, fetch_kind, sizing_id).await?;
+        let maybe_existing = self.caching_fetch(image_id, fetch_kind, sizing_id).await?;
         let (data, retrieved_kind) = match maybe_existing {
             // If we're in JIT mode we want to re-encode the image and store it.
             None => if self.config.mode == ProcessingMode::Jit {
                 let base_kind = self.config.formats.original_image_store_format;
-                let value = self.storage.fetch(
-                    self.bucket_id,
+                let value = self.caching_fetch(
                     image_id,
                     base_kind,
                     sizing_id,
@@ -192,7 +206,63 @@ impl BucketController {
 
     pub async fn delete(&self, image_id: Uuid) -> anyhow::Result<()> {
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
-        self.storage.delete(self.bucket_id, image_id).await
+        let purged_entities = self.storage.delete(self.bucket_id, image_id).await?;
+
+        if let Some(ref cache) = self.cache {
+            for (sizing_id, kind) in purged_entities {
+                let cache_key = self.cache_key(sizing_id, image_id, kind);
+                cache.invalidate(&cache_key);
+            }
+        }
+
+        Ok(())
     }
 }
 
+impl BucketController {
+    #[inline]
+    fn cache_key(&self, sizing_id: u32, image_id: Uuid, kind: ImageKind) -> String {
+         format!(
+            "{bucket}:{sizing}:{image}:{kind}",
+            bucket = self.bucket_id,
+            sizing = sizing_id,
+            image = image_id,
+            kind = kind.as_file_extension(),
+        )
+    }
+
+    async fn caching_fetch(
+        &self,
+        image_id: Uuid,
+        fetch_kind: ImageKind,
+        sizing_id: u32,
+    ) -> anyhow::Result<Option<Bytes>> {
+        let maybe_cache_backend = self.cache
+            .as_ref()
+            .map(Some)
+            .unwrap_or_else(global_cache);
+
+        let cache_key = self.cache_key(sizing_id, image_id, fetch_kind);
+
+        if let Some(cache) = maybe_cache_backend {
+            if let Some(buffer) = cache.get(&cache_key) {
+                return Ok(Some(buffer))
+            }
+        }
+
+        let maybe_existing = self.storage.fetch(
+            self.bucket_id,
+            image_id,
+            fetch_kind,
+            sizing_id
+        ).await?;
+
+        if let Some(cache) = maybe_cache_backend {
+            if let Some(ref buffer) = maybe_existing {
+                cache.insert(cache_key, buffer.clone());
+            }
+        }
+
+        Ok(maybe_existing)
+    }
+}

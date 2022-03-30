@@ -26,5 +26,5 @@ pub trait StorageBackend: Sync + Send + 'static {
         &self,
         bucket_id: u32,
         image_id: Uuid,
-    ) -> anyhow::Result<()>;
+    ) -> anyhow::Result<Vec<(u32, ImageKind)>>;
 }

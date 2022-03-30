@@ -130,11 +130,12 @@ impl StorageBackend for BlobStorageBackend {
         &self,
         bucket_id: u32,
         image_id: Uuid,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Vec<(u32, ImageKind)>> {
         let bucket = get_bucket_by_id(bucket_id)
             .ok_or_else(|| anyhow!("Bucket does not exist."))?
             .cfg();
 
+        let mut hit_entries = vec![];
         for sizing_id in bucket.sizing_preset_ids().iter().copied() {
             for kind in ImageKind::variants() {
                 let store_in = self.format_path(bucket_id, sizing_id, image_id, *kind);
@@ -146,10 +147,11 @@ impl StorageBackend for BlobStorageBackend {
                     ..Default::default()
                 };
                 self.client.delete_object(request).await?;
+                hit_entries.push((sizing_id, *kind));
             }
         }
 
-        Ok(())
+        Ok(hit_entries)
     }
 }
 

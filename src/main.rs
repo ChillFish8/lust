@@ -8,6 +8,7 @@ mod processor;
 
 #[cfg(test)]
 mod tests;
+mod cache;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -71,6 +72,10 @@ async fn main() -> Result<()> {
 
     config::init(&args.config_file).await?;
 
+    if let Some(config) = config::config().global_cache {
+        cache::init_cache(config)?;
+    }
+
     let global_limiter = config::config()
         .max_concurrency
         .map(Semaphore::new)
@@ -87,16 +92,22 @@ async fn main() -> Result<()> {
         .map(|(bucket, cfg)| {
             let bucket_id = crate::utils::crc_hash(bucket);
             let pipeline = cfg.mode.build_pipeline(cfg);
+            let cache = cfg.cache
+                .map(cache::new_cache)
+                .transpose()?
+                .flatten();
+
             let controller = BucketController::new(
                 bucket_id,
+                cache,
                 global_limiter.clone(),
                 cfg.clone(),
                 pipeline,
                 storage.clone(),
             );
-            (bucket_id, controller)
+            Ok::<_, anyhow::Error>((bucket_id, controller))
         })
-        .collect();
+        .collect::<Result<hashbrown::HashMap<_, _>, anyhow::Error>>()?;
 
     controller::init_buckets(buckets);
 

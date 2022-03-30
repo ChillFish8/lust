@@ -6,7 +6,7 @@ use poem::test::TestClient;
 use poem::web::headers;
 use tokio::sync::Semaphore;
 
-use crate::{BucketController, config, controller, StorageBackend};
+use crate::{BucketController, cache, config, controller, StorageBackend};
 
 const JIT_CONFIG: &str = include_str!("../tests/configs/jit-mode.yaml");
 const AOT_CONFIG: &str = include_str!("../tests/configs/aot-mode.yaml");
@@ -32,16 +32,22 @@ async fn setup_environment(cfg: &str) -> anyhow::Result<TestClient<Route>> {
         .map(|(bucket, cfg)| {
             let bucket_id = crate::utils::crc_hash(bucket);
             let pipeline = cfg.mode.build_pipeline(cfg);
+            let cache = cfg.cache
+                .map(cache::new_cache)
+                .transpose()?
+                .flatten();
+
             let controller = BucketController::new(
                 bucket_id,
+                cache,
                 global_limiter.clone(),
                 cfg.clone(),
                 pipeline,
                 storage.clone(),
             );
-            (bucket_id, controller)
+            Ok::<_, anyhow::Error>((bucket_id, controller))
         })
-        .collect();
+        .collect::<Result<hashbrown::HashMap<_, _>, anyhow::Error>>()?;
 
     controller::init_buckets(buckets);
 
