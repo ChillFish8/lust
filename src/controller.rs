@@ -111,6 +111,8 @@ impl BucketController {
     }
 
     pub async fn upload(&self, kind: ImageKind, data: Vec<u8>) -> anyhow::Result<UploadInfo> {
+        debug!("Uploading processed image with kind: {:?} and is {} bytes in size.", kind, data.len());
+
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
         let start = Instant::now();
 
@@ -160,13 +162,26 @@ impl BucketController {
         size_preset: Option<String>,
         custom_sizing: Option<(u32, u32)>,
     ) -> anyhow::Result<Option<StoreEntry>> {
+        debug!(
+            "Fetching image with image_id: {}, desired_kind: {:?}, preset: {:?}, custom_sizing: {:?}.",
+            image_id, desired_kind, &size_preset, &custom_sizing,
+        );
+
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
 
-        let sizing_id = size_preset
+        let sizing = size_preset
             .map(Some)
-            .unwrap_or_else(|| self.config.default_serving_preset.clone())
-            .map(crate::utils::crc_hash)
-            .unwrap_or(0);
+            .unwrap_or_else(|| self.config.default_serving_preset.clone());
+
+        let sizing_id = if let Some(sizing_preset) = sizing {
+          if sizing_preset == "original" {
+              0
+          } else {
+              crate::utils::crc_hash(sizing_preset)
+          }
+        } else {
+            0
+        };
 
         // In real time situations
         let fetch_kind = if self.config.mode == ProcessingMode::Realtime {
@@ -183,7 +198,7 @@ impl BucketController {
                 let value = self.caching_fetch(
                     image_id,
                     base_kind,
-                    sizing_id,
+                    0,
                 ).await?;
 
                 match value {
@@ -232,6 +247,8 @@ impl BucketController {
     }
 
     pub async fn delete(&self, image_id: Uuid) -> anyhow::Result<()> {
+        debug!("Removing image {}", image_id);
+
         let _permit = get_optional_permit(&self.global_limiter, &self.limiter).await?;
         let purged_entities = self.storage.delete(self.bucket_id, image_id).await?;
 
