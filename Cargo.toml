@@ -27,6 +27,7 @@ strum = { version = "0.24", features = ["derive"] }
 # Blob storage deps
 rusoto_core = "0.47.0"
 rusoto_s3 = "0.47.0"
+scylla = "0.4.3"
 
 moka = "0.8.0"
 rayon = "1.5.1"

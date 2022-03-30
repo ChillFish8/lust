@@ -7,9 +7,13 @@ use crate::StorageBackend;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum BackendConfigs {
-    // Scylla {
-    //     nodes: Vec<String>,
-    // },
+    Scylla {
+        nodes: Vec<String>,
+        username: Option<String>,
+        password: Option<String>,
+        keyspace: String,
+        table: Option<String>,
+    },
     FileSystem {
         /// The base output directory to store files.
         directory: PathBuf,
@@ -51,6 +55,23 @@ impl BackendConfigs {
 
                 Ok(Arc::new(backend))
             },
+            Self::Scylla {
+                nodes,
+                username,
+                password,
+                keyspace,
+                table,
+            } => {
+                let backend = super::scylladb::ScyllaBackend::connect(
+                    keyspace.clone(),
+                    table.clone(),
+                    nodes,
+                    username.clone(),
+                    password.clone(),
+                ).await?;
+
+                Ok(Arc::new(backend))
+            }
         }
     }
 }
