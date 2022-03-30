@@ -38,7 +38,7 @@ impl ScyllaBackend {
             image_id uuid, \
             kind text, \
             data blob, \
-            PRIMARY KEY ((bucket_id, sizing_id, image_id, kind, data))
+            PRIMARY KEY ((bucket_id, sizing_id, image_id, kind))
         )", table);
         connection.query(&qry, &[]).await?;
 
