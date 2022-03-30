@@ -152,7 +152,7 @@ impl LustApi {
             let local_limit = bucket
                 .cfg()
                 .max_upload_size
-                .map(|v| v as usize)
+                .map(|v| (v * 1024) as usize)
                 .unwrap_or(u32::MAX as usize);
 
             if *content_length > local_limit  {
