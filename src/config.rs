@@ -66,6 +66,10 @@ fn validate(cfg: &RuntimeConfig) -> Result<()> {
                 return Err(anyhow!("Bucket {} is invalid: Default serving format is not an enabled encoding format.", name))
             }
         }
+
+        if cfg.presets.keys().any(|v| v == "original") {
+            return Err(anyhow!("Bucket {} is invalid: The `original` preset name is reserved.", name))
+        }
     }
 
     Ok(())
