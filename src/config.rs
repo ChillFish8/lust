@@ -58,7 +58,7 @@ pub struct RuntimeConfig {
     /// The base path to serve images from.
     ///
     /// Defaults to `/images`.
-    pub base_serving_path: String,
+    pub base_serving_path: Option<String>,
 
     /// The global cache handler.
     ///

@@ -13,7 +13,7 @@ mod cache;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use mimalloc::MiMalloc;
 use poem::listener::TcpListener;
@@ -76,6 +76,61 @@ async fn main() -> Result<()> {
         cache::init_cache(config)?;
     }
 
+    setup_buckets().await?;
+
+    let serving_path = if let Some(p) = config::config().base_serving_path.clone() {
+        if !p.starts_with('/') {
+            return Err(anyhow!("Invalid config: Base serving path must start with '/'"))
+        }
+
+        p
+    } else {
+        "/images".to_string()
+    };
+
+    let api_service = OpenApiService::new(
+        routes::LustApi,
+         "Lust API",
+        env!("CARGO_PKG_VERSION"),
+    )
+    .description(include_str!("../description.md"))
+    .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1", &bind)));
+
+    let ui = api_service.redoc();
+    let spec = api_service.spec();
+
+    let app = Route::new()
+        .nest(format!("/v1{}", serving_path), api_service)
+        .nest("/ui", ui)
+        .at("/spec", poem::endpoint::make_sync(move |_| spec.clone()))
+        .around(log);
+
+    info!("Lust has started!");
+    info!(
+        "serving requests @ http://{}",
+        &bind,
+    );
+    info!("GitHub: https://github.com/chillfish8/lust");
+    info!("To ask questions visit: https://github.com/chillfish8/lust/discussions");
+    info!(
+        "To get started you can check out the documentation @ http://{}/ui",
+        &bind,
+    );
+
+    Server::new(TcpListener::bind(&bind))
+        .run_with_graceful_shutdown(
+            app,
+            async move {
+                let _ = wait_for_signal().await;
+            },
+            Some(Duration::from_secs(2)),
+        )
+        .await?;
+
+    Ok(())
+}
+
+async fn setup_buckets() -> anyhow::Result<()> {
     let global_limiter = config::config()
         .max_concurrency
         .map(Semaphore::new)
@@ -110,45 +165,6 @@ async fn main() -> Result<()> {
         .collect::<Result<hashbrown::HashMap<_, _>, anyhow::Error>>()?;
 
     controller::init_buckets(buckets);
-
-    let api_service = OpenApiService::new(
-        routes::LustApi,
-         "Lust API",
-        env!("CARGO_PKG_VERSION"),
-    )
-    .description(include_str!("../description.md"))
-    .server(args.docs_url.unwrap_or_else(|| format!("http://{}/v1", &bind)));
-
-    let ui = api_service.redoc();
-    let spec = api_service.spec();
-
-    let app = Route::new()
-        .nest("/v1", api_service)
-        .nest("/ui", ui)
-        .at("/spec", poem::endpoint::make_sync(move |_| spec.clone()))
-        .around(log);
-
-    info!("Lust has started!");
-    info!(
-        "serving requests @ http://{}",
-        &bind,
-    );
-    info!("GitHub: https://github.com/chillfish8/lust");
-    info!("To ask questions visit: https://github.com/chillfish8/lust/discussions");
-    info!(
-        "To get started you can check out the documentation @ http://{}/ui",
-        &bind,
-    );
-
-    Server::new(TcpListener::bind(&bind))
-        .run_with_graceful_shutdown(
-            app,
-            async move {
-                let _ = wait_for_signal().await;
-            },
-            Some(Duration::from_secs(2)),
-        )
-        .await?;
 
     Ok(())
 }
