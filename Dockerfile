@@ -14,6 +14,9 @@ FROM debian:buster-slim
 
 WORKDIR /etc/lust
 
+RUN apt-get update
+RUN apt-get install libssl-dev pkg-config -y
+
 COPY --from=build /app/target/release/lust ./
 USER root
 
