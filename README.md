@@ -12,7 +12,7 @@ Re-encode uploaded images into `png`, `jpeg`, `webp` or even into `gif` based fo
 Resize them to your liking automatically with sizing presets, instantly create small,
 medium and large variants with just a few line in a config file. *Now that's the spirit of lust*
 
-And much more like caching, on the fly resizing, processing modes to name a few.
+And much more like caching, on the fly resizing and diffrent processing modes to name a few.
 ## Getting started
 
 ### Creating a config file
