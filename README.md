@@ -12,7 +12,7 @@ Re-encode uploaded images into `png`, `jpeg`, `webp` or even into `gif` based fo
 Resize them to your liking automatically with sizing presets, instantly create small,
 medium and large variants with just a few line in a config file. *Now that's the spirit of lust*
 
-And much more like caching, on the fly resizing, processing modes to name a few.
+And much more like caching, on the fly resizing and diffrent processing modes to name a few.
 ## Getting started
 
 ### Creating a config file
@@ -35,8 +35,9 @@ cargo install lust --git https://github.com/ChillFish8/lust.git
 #### Docker Images
 Lust has a set of pre-built, optimised docker images ready to go. Just run it with
 ```shell
-docker run -v "my_config.yaml:/var/lust/my_config.yaml" chillfish8/lust:latest --config-file "/var/lust/my_config.yaml"
+docker run -v "my_configs:/var/lust/" chillfish8/lust:latest --config-file "/var/lust/config.yaml"
 ```
+*Note: Assuming there is a folder called `my_configs` with a `config.yaml` file in it.*
 
 ### After Installation
 Once you're up and running navigate to `http://127.0.0.1:8000/ui` or `/ui` of what ever port your server is running on

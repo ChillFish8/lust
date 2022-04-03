@@ -15,10 +15,10 @@ FROM debian:buster-slim
 WORKDIR /etc/lust
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates tzdata libssl-dev pkg-config \
+    && apt-get install -y ca-certificates libssl-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=build /app/target/release/lust /
+COPY --from=build /app/target/release/lust ./
 USER root
 
 ENTRYPOINT ["./lust", "--host", "0.0.0.0"]
