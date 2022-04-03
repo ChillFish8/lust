@@ -15,7 +15,7 @@ FROM debian:buster-slim
 WORKDIR /etc/lust
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates tzdata \
+    && apt-get install -y ca-certificates tzdata libssl-dev pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/target/release/lust /
