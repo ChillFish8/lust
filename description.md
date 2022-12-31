@@ -108,7 +108,7 @@ buckets:
         mode: jit   # 'jit', 'aot' or 'realtime' are allowed.
         
         formats:                 
-          png: true  # Disable PNG encoding.
+          png: false  # Disable PNG encoding.
           jpeg: true  # Enable JPEG encoding.
           webp: true  # Enable WebP encoding.
           gif: false  # Disable GIF encoding.
