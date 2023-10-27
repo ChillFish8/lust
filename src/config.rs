@@ -180,9 +180,13 @@ pub struct BucketConfig {
 impl BucketConfig {
     #[inline]
     pub fn sizing_preset_ids(&self) -> Vec<u32> {
-        self.presets.keys()
-            .map(crate::utils::crc_hash)
-            .collect()
+        let mut presets: Vec<u32> =
+            self.presets.keys().map(crate::utils::crc_hash).collect();
+        match self.default_serving_preset {
+            None => presets.push(0),
+            _ => ()
+        }
+        presets
     }
 }
 
