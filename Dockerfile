@@ -1,4 +1,4 @@
-FROM rust:slim-buster as build
+FROM rust:bookworm as build
 
 WORKDIR /app
 
@@ -10,7 +10,7 @@ RUN apt-get install libssl-dev pkg-config -y
 RUN cargo build --release
 
 # Copy the binary into a new container for a smaller docker image
-FROM debian:buster-slim
+FROM debian:bookworm
 
 WORKDIR /etc/lust
 
